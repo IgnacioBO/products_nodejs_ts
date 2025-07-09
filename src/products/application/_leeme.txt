@@ -1,0 +1,7 @@
+La capa de aplicación orquesta casos de uso (por ejemplo haremos un login, crear un usuario, logout, etc), coordinando los modelos de dominio y definiendo los puertos (interfaces) que usarán los adaptadores de entrada y salida.
+ 
+Los puertos son interfaces que tienen los metodos que deberia llevar una implementacion (un adaptador)
+Un adaptador puede ser el el product.controller que recibe las peticiones (en capa infrastructure),
+PERO ademas recibe un servicio (productoService.js) [capa Aplicacion] en su construccion (por inyeccion de dep).
+Entonces aqui en vez de recibir un servicio directo podira recibir una interface de servicio.
+Entonces filamente product.controler (adaptador) recibiria un puerto (el interface de servicio)

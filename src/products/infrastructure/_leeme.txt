@@ -1,0 +1,15 @@
+En esta capa, la mas externa, están los adaptadores que implementan los puertos,
+como controladores HTTP, repositorios de conexión a base de datos o clientes de mensajería.
+ 
+Osea aqui iría por ejemplo la implementacion de repository segun la bbdd,
+por ejemplo puede estar postgreProductRepository o mysqlProductRepository.
+Estos repository deberian implementar un repository interface (de la capa domain) que tenga metodos vacíos.
+ 
+Aqui tambien irian controladores http (que recibe las peticioens http)
+ 
+Aqui irian:
+Adaptadores primarios (Driving Adapters): reciben eventos o peticiones
+(controladores REST, listeners de colas, CLIs) y llaman a los driving ports
+ 
+Adaptadores secundarios (Driven Adapters): implementan los driven ports para
+conectar con sistemas externos (repositorios de BBDD, clientes HTTP, servicios de terceros)

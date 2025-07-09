@@ -1,0 +1,14 @@
+El dominio es el corazón de la aplicación y contiene los modelos con la lógica de 
+negocio más pura; no debe tener ninguna dependencia hacia capas externas.
+Aquí hay conceptos como el usuario, agregados, "userIs", etc.
+Aquí también van las INTERFACES de nuestros repositorios.
+ 
+Aqui tambien se pueden definir puertos (como interfaces de los repositorios de la capa infrastructura)
+ 
+Los puertos son interface (son como clases con metodos definidos vacios)
+que tienen las funciones que deberia llevar una implementacion (un adaptador).
+Un adaptador puede ser por ejemplo el postrgreProductRepository.js (adapter de la capa Infrastructure), el cual
+se conecta a la bbdd usando posgrtgre,
+PERO este adapter (de la infrastructura) implementa un puerto (port) que sera prodcutRepository 
+(que esta en en esta capa de dominio) que tiene definido 
+los metodos pero VACÍOS (como Create, Find, etc), osea un interface
