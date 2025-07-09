@@ -1,6 +1,6 @@
 
 //@ts-check
-function validateField(field, fieldName, type, required = false) {
+function validateField(field: any, fieldName: string, type: string, required: boolean = false) {
     type = type.toLowerCase();
 
     if (required && (field === undefined || field === null)) {
@@ -12,7 +12,7 @@ function validateField(field, fieldName, type, required = false) {
     }
 }
 
-function validateArrayField(field, fieldName, type, required = false) {
+function validateArrayField(field: any, fieldName: string, type: string, required: boolean = false) {
     type = type.toLowerCase();
 
     if (required && (field === undefined || field === null)) {

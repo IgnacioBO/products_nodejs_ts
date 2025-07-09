@@ -1,3 +1,4 @@
 #Para omitir el .env por variables sensibles
 .env
 node_modules/
+dist/

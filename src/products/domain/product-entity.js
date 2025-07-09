@@ -11,7 +11,7 @@ Value Object:
 A "description" or "attribute" of something else. 
 */
 //TODO: Cambiar a camelCase los nombres de las propiedades de la clase y luego en el service se cambian a snake_case ya sea con una funcion o un DTO    
-const { validateField, validateArrayField } = require('../../shared/domain/utils/generic-functions.js');
+const { validateField, validateArrayField } = require('../../shared/domain/utils/generic-functions');
 const Attribute = require('./attribute-vo.js');
 class Product {
     //Usamos cosntructor con ({}) para poder usar destructuring y no tener que pasar todos los argumentos al constructor

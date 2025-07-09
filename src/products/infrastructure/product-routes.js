@@ -1,6 +1,6 @@
 //@ts-check
 const express = require('express');
-const { ErrorHandler } = require('../../shared/infrastructure/middlewares/response-handlers.js');
+const { ErrorHandler } = require('../../shared/infrastructure/middlewares/response-handlers');
 
 //En vez de llamarlo ruta mejor llamarlo productRoutesFactory
 //Esto es una factory function que crea un router de productos

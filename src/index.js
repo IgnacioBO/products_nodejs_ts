@@ -2,7 +2,7 @@
 //El paquete dotenv permite cargar variables de entorno desde un archivo .env a process.env
 //Lo mismo que hacer const dotenv = require('dotenv') y luego dotenv.config()
 require('dotenv').config();
-const {ResponseHandler, ErrorHandler} = require('./shared/infrastructure/middlewares/response-handlers.js');
+const {ResponseHandler, ErrorHandler} = require('./shared/infrastructure/middlewares/response-handlers');
 const express = require('express');
 const app = express();
 const { connectMongo, client } = require("./shared/infrastructure/config/database-mongodb");

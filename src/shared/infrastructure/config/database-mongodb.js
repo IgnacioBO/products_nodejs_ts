@@ -45,7 +45,7 @@ async function connectMongo() {
     const movie = await movies.findOne(query);
     console.log(movie);
   } catch (error) {
-    throw new Error ("❌ Error al conectar a MongoDB:", error); // Re-throw the error to handle it in the calling function
+    throw new Error ("❌ Error al conectar a MongoDB: " + error); // Re-throw the error to handle it in the calling function
   }
 }
 

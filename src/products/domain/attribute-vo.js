@@ -4,7 +4,7 @@
 // y no por su id (como puede ser un sku)
 // no tiene identidad unica porque si dos value object tiene los mismos campos y valores son el mismo value object
 // Es inmutable, es decir, NO DEBERIA cambiar una vez creado
-const { validateField } = require('../../shared/domain/utils/generic-functions.js');
+const { validateField } = require('../../shared/domain/utils/generic-functions');
 class Attribute {
     constructor({
         name_code,

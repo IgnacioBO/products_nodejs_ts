@@ -1,4 +1,4 @@
-const {validateField, validateFields, validateArrayField} = require('../../shared/domain/utils/generic-functions.js');
+const {validateField, validateFields, validateArrayField} = require('../../shared/domain/utils/generic-functions');
 const Price = require('./price-vo.js');
 
 module.exports = class Offer {
