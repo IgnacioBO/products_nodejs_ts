@@ -1,6 +1,6 @@
 //@ts-check
 //const { ProductoNotFoundError, ProductWithSKUAlreadyExistsError } = require("../domain/product-errors"); //Para poder identificar el tipo de error (instance of) que viene desde las capas dominio y poder manejarlo en el controller
-const httpError = require("../../shared/infrastructure/errors/http-errors.js"); //Para poder enviar al cliente error con status code y mensaje de error
+const httpError = require("../../shared/infrastructure/errors/http-errors"); //Para poder enviar al cliente error con status code y mensaje de error
 //const ProductFiltersDTO = require('../application/product-filters-dto.js');
 const PaginationMetadata = require("../../shared/application/pagination-metadata.js");
 const PaginationsParams = require("../../shared/domain/paginations-params-vo.js");

@@ -1,19 +1,20 @@
-//@ts-check
 //El paquete dotenv permite cargar variables de entorno desde un archivo .env a process.env
 //Lo mismo que hacer const dotenv = require('dotenv') y luego dotenv.config()
-require('dotenv').config();
-const {ResponseHandler, ErrorHandler} = require('./shared/infrastructure/middlewares/response-handlers');
-const express = require('express');
+//require('dotenv').config();
+import 'dotenv/config';
+import { ResponseHandler, ErrorHandler } from './shared/infrastructure/middlewares/response-handlers';
+//const express = require('express');
+import express from 'express';
 const app = express();
-const { connectMongo, client } = require("./shared/infrastructure/config/database-mongodb");
+import { connectMongo, client } from "./shared/infrastructure/config/database-mongodb";
 
 //Ahora importamos las capas de repositorio, servicio y controlador y la guardamos en constantes para poder usarlas parametro de cada capa
 //Osea por ejemplo, al servicio le pasaremos el repositorio y al controlador le pasaremos el servicio
 //Esto es lo que se conoce como inyeccion de dependencias
-const ProductRepository = require('./products/infrastructure/product-postgre-repository.js');
-const ProductService = require('./products/application/product-service.js');
-const ProductController = require('./products/infrastructure/product-controller.js');
-const productRoutesFactory = require('./products/infrastructure/product-routes.js');
+import ProductRepository from './products/infrastructure/product-postgre-repository';
+import ProductService from './products/application/product-service';
+import ProductController from './products/infrastructure/product-controller';
+import ProductRoutesFactory from './products/infrastructure/product-routes';
 
 //TODO: productRepository deberia recibir el pool como parametro
 //const productRepository = new ProductRepository(pool);
@@ -23,20 +24,20 @@ const productService = new ProductService(productRepository);
 //Creamos una instancia del servicio de productos y la pasamos como parametro al constructor de la clase ProductController
 const productController = new ProductController(productService);
 
-const OfferRepository = require('./offer/infrastructure/offer-mongodb-repository.js');
-const OfferService = require('./offer/application/offer-service.js');
-const OfferController = require('./offer/infrastructure/offer-controller.js');
-const offerRoutesFactory = require('./offer/infrastructure/offer-routes.js');
+import OfferRepository from './offer/infrastructure/offer-mongodb-repository';
+import OfferService from './offer/application/offer-service';
+import OfferController from './offer/infrastructure/offer-controller';
+import offerRoutesFactory from './offer/infrastructure/offer-routes';
 
 const offerRepository = new OfferRepository();
 const offerService = new OfferService(productService, offerRepository);
 const offerController = new OfferController(offerService);
 
 
-async function main() {
+async function main(): Promise<void>{
     //Nos conectamos a MongoDB al iniciar la aplicacion
     await connectMongo();
-    app.set('port', process.env.EP_PORT || 3000);
+    app.set('port', Number(process.env.EP_PORT) || 3000);
 
     //Parsea los json y el body de las peticiones
     app.use(express.json());
@@ -46,7 +47,7 @@ async function main() {
 
     //Aqui usaremos el router de productos que hemos creado y recibe como parametro el productController
     //Osea le pasamos el controlador de productos que hemos creado
-    app.use('/api/products', productRoutesFactory({productController: productController}));
+    app.use('/api/products', ProductRoutesFactory({productController: productController}));
     app.use('/api/offers', offerRoutesFactory({offerController: offerController}));
 
     const server = app.listen(app.get('port'), () => {

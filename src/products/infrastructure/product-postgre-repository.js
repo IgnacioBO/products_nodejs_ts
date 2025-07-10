@@ -1,5 +1,5 @@
 //@ts-check
-const pool = require('../../shared/infrastructure/config/database.js');
+import pool from '../../shared/infrastructure/config/database';
 const Product = require('../domain/product-entity.js');
 const Attribute = require('../domain/attribute-vo.js');
 const {ProductRepository} = require('../domain/product-repository.js');

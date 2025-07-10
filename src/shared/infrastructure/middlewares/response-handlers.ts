@@ -6,9 +6,10 @@
   //Se usara <T> para que sea generico y "data" (payload) pueda ser de cualquier tipo
   interface CustomResponse<T, U> extends Response {
     success(argumentos: { data?: T, message?: string, meta?: U }): Response;
+    ok(argumentos: { data?: T, message?: string, meta?: U }): Response;
   }
 
-  export const ResponseHandler = (req: Request, res: Response, next: NextFunction) => {
+  export const ResponseHandler = (req: Request, res: Response, next: NextFunction): void => {
     // Método para respuestas exitosas
     //Agregamos la funcion res.success al objeto res para poder usarlo en cualquier parte de la aplicacion
     //Esto hace que cuando se llame a res.success, se ejecute un res.json con el objeto que le pasamos como argumento
@@ -27,26 +28,26 @@
         ...(data && { data }),                             // payload
         ...(Object.keys(meta).length && { meta })          // meta solo se pone si tiene algo
         }));    
-    };     
+    };
     next();
   };
 
   interface CustomError<T> extends ErrorRequestHandler {
     status: number;
-    message: T;
+    payload: T;
   }
 
   //Este metodo se ejecutará si hay un error en la aplicacion
   //En vez de llamarse REsponseError, se puede llamar errorHandler o algo asi
   //ErrorHandler porque los handlers son funciones que manejan errores y se encargan de devolver una respuesta estandarizada
   //En este caso, el errorHandler se encargará de manejar los errores y devolver una respuesta estandarizada  
-  export const ErrorHandler = (err: ErrorRequestHandler, req: Request, res: Response, next: NextFunction) => {
+  export const ErrorHandler = (err: ErrorRequestHandler, req: Request, res: Response, next: NextFunction): void => {
     const e = err as CustomError<any>;
 
     // Estatus y mensaje por defecto o personalizado
     const status = e.status || 500;
-    let message = e.message || 'Error de servidor interno';
-    message = typeof e.message === "string" ? {message: e.message} : message; 
+    let message = e.payload || 'Error de servidor interno';
+    message = typeof e.payload === "string" ? {message: e.payload} : message; 
     // Si viene solo string, lo convertimos a objeto con la propiedad message
     // Si el error tiene un objeto de errores, lo usamos porque puede tener mas campos
 

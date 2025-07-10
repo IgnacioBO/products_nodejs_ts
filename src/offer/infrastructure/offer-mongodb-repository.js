@@ -1,5 +1,5 @@
 //@ts-check
-const { getDb } = require ('../../shared/infrastructure/config/database-mongodb.js');
+import { getDb } from '../../shared/infrastructure/config/database-mongodb';
 const Offer = require('../domain/offer-entity.js');
 const Price = require('../domain/price-vo.js');
 const OfferRepository = require('../domain/offer-repository.js');
@@ -323,4 +323,4 @@ class OfferMongoDBRepository extends OfferRepository {
     }
 }
 
-module.exports = OfferMongoDBRepository;
+export default OfferMongoDBRepository;

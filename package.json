@@ -9,8 +9,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc",
     "start": "node dist/index.js",
-    "dev": "ts-node src/index.js",
-    "devommit": "ts-node --transpile-only src/index.js"
+    "dev": "ts-node src/index.ts",
+    "devommit": "ts-node --transpile-only src/index.ts"
   },
   "author": "Wache",
   "license": "ISC",
@@ -24,6 +24,7 @@
   "devDependencies": {
     "@types/express": "^5.0.3",
     "@types/node": "^24.0.12",
+    "@types/pg": "^8.15.4",
     "nodemon": "^3.1.9",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3"

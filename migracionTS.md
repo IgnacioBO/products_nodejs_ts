@@ -52,7 +52,7 @@ Gracias a allowJs/checkJs, tu proyecto puede compilar archivos .js y .ts simult�
 b) Renombrar por módulos
 Comienza con módulos pequeños o menos críticos (por ejemplo, infrastructure o utils), renombra archivo.js → archivo.ts y corrige los tipos que te marque el compilador. Sigue con application y finalmente con domain, siempre validando que los tests o peticiones sigan OK.
 
-**Ahora 
+**Ahora para probar usar npm run build (saldran errores de compilacion, pero compilará) y luego hacern npm run start. Tambien puede hacerse directo con npm devommit**
 
 **IMPORTANTE**
 Pueden haber algunos errores al intentar hacer un run, si hay modulo expoertados sin "const, let o var" puede dar error, asi que hay que ponerlos. (En todo caso informará de esto).

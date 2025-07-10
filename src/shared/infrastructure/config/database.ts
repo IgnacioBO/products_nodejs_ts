@@ -1,7 +1,9 @@
 //@ts-check
 //Aqui usamos { Pool } porque solo necesitamos la clase Pool del paquete pg
 //El paquete pg es un cliente de PostgreSQL para Node.js
-const { Pool } = require('pg');
+// Para que funcione esta imporacion con TypeScript, debemos instalar el paquete @types/pg
+//npm i --save-dev @types/pg
+import { Pool } from 'pg';
 
 //Desestructuramos las variables de entorno que necesitamos para la conexión a la base de datos
 //Lo que hace esta sintaxis es lo mismo que hacer:
@@ -16,4 +18,8 @@ const pool = new Pool({
   connectionString: `postgres://${DB_PRODUCT_USER}:${DB_PRODUCT_PASS}@${DB_PRODUCT_HOST}:${DB_PRODUCT_PORT}/${DB_PRODUCT_NAME}`,
 });
 
-module.exports = pool;
+
+//Default export significa que ese módulo tiene una sola “cosa principal” para importar.
+//import pool from './database-postgres';
+//Ahí pool puede llamarse como quieras, porque es el export por defecto.
+export default pool;

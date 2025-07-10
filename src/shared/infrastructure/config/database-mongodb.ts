@@ -1,8 +1,14 @@
 // Documentation: https://www.mongodb.com/docs/drivers/node/current/connect/mongoclient/
-//@ts-check
-const { MongoClient, ServerApiVersion } = require('mongodb');
-require('dotenv').config();
-const {DB_OFFER_USER, DB_OFFER_PASS, DB_OFFER_HOST, DB_OFFER_PORT, DB_OFFER_NAME} = process.env;
+import { MongoClient, ServerApiVersion} from 'mongodb';
+
+//Los siguiente seran importados como "type" solo para que TypeScript los reconozca y no los incluya en el bundle final
+//Esto es para poder usar tipos de TypeScript sin necesidad de importar las librerías en tiempo de ejecución
+//En todo caso si los pongo dentro de import(), typescriot automáticamente los importará como tipos y no los incluirá en el bundle final, pero es mejor hacerlo explícito por claridad
+//COmo saber si usar import type o import()? Si solo se necesitan los tipos, se debe usar import type. Si se necesita la implementación en tiempo de ejecución, se debe usar import().
+import type { MongoClientOptions, Db } from 'mongodb';
+
+import ('dotenv/config'); // Importa las variables de entorno desde el archivo .env
+const {DB_OFFER_USER = "", DB_OFFER_PASS = "", DB_OFFER_HOST, DB_OFFER_PORT, DB_OFFER_NAME} = process.env;
 
 /**
  * - Si es una instancia local: mongodb://usuario:pass@host:puerto/nombreDB?authSource=admin
@@ -11,25 +17,23 @@ const {DB_OFFER_USER, DB_OFFER_PASS, DB_OFFER_HOST, DB_OFFER_PORT, DB_OFFER_NAME
 
 //encodeURIComponent se usa para codificar caracteres especiales en la URI, como @, :, /, que podria tener una contraseña y no tener errores.
 //authSource=admin significa que el usuario a autenticar se encuentra en la base de datos admin (en system.users)
-// @ts-ignore
-const mongoURI = `mongodb://${encodeURIComponent(DB_OFFER_USER)}:${encodeURIComponent(DB_OFFER_PASS)}` + 
+const mongoURI: string = `mongodb://${encodeURIComponent(DB_OFFER_USER)}:${encodeURIComponent(DB_OFFER_PASS)}` + 
     `@${DB_OFFER_HOST}:${DB_OFFER_PORT}/${DB_OFFER_NAME}?authSource=admin`;
 
 console.log(`MongoDB URI: ${mongoURI}`); //Para ver la URI que se esta usando
 
-
-const clientOptions = {
+const clientOptions: MongoClientOptions = {
         serverApi: { //define comadnos y opciones que se pueden usar
             version: ServerApiVersion.v1, //Usar v1
             strict: true, //Se rechazan comandos u opciones fuera de v1
             deprecationErrors: true, // Error si usamos una funcion deprecada
         },
         maxPoolSize: 100 // Lo máximo de conexiones que se pueden abrir al mismo tiempo (default 100)
-    };
+};
 
-const client = new MongoClient (mongoURI, clientOptions);
+const client: MongoClient = new MongoClient (mongoURI, clientOptions);
 
-async function connectMongo() {
+async function connectMongo(): Promise<MongoClient> {
   try {
     // Connect the client to the server (optional starting in v4.7)
     await client.connect();
@@ -49,11 +53,11 @@ async function connectMongo() {
   }
 }
 
-function getDb() {
+function getDb(): Db {
   return client.db(process.env.DB_OFFER_NAME);
 }
 
-module.exports = {
+export {
   connectMongo, // Funcion para conectarse a MongoDB, se llamara en el index.js, al iniciar la aplicacion, solo una vez
   getDb, // Funcion para obtener la base de datos, se usara en los repositorios
   client, // Exportamos el cliente por si se necesite usar cliente en algún lugar
