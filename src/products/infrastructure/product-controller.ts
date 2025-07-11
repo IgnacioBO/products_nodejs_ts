@@ -2,9 +2,10 @@
 const { ProductoNotFoundError, ProductWithSKUAlreadyExistsError } = require("../domain/product-errors"); //Para poder identificar el tipo de error (instance of) que viene desde las capas dominio y poder manejarlo en el controller
 const httpError = require("../../shared/infrastructure/errors/http-errors"); //Para poder enviar al cliente error con status code y mensaje de error
 const ProductFiltersDTO = require('../application/product-filters-dto.js');
-const PaginationMetadata = require("../../shared/application/pagination-metadata.js");
-const PaginationsParams = require("../../shared/domain/paginations-params-vo.js");
-const PaginationMetadataResponseDTO = require("../../shared/application/pagination-metadata-dto.js");
+import PaginationMetadata from "../../shared/application/pagination-metadata";
+import type PaginationMetadataResponseDTO from "../../shared/application/pagination-metadata-dto";
+import { toPaginationMetadataResponseDTO } from "../../shared/application/pagination-metadata-mapper";
+const PaginationsParams = require("../../shared/domain/paginations-params-vo");
 const ProductResponseDTO = require("./product-response-dto.js");
 
 
@@ -57,11 +58,11 @@ class ProductController {
 
         const totalCount = await this.productService.count(productFiltersDTO);
         const paginationMetadata = new PaginationMetadata(Number(page), Number(limit), totalCount, 50);
-        const paginationsParams = new PaginationsParams(paginationMetadata.offset, paginationMetadata.limit);
+        const paginationsParams: PaginationsParams = {offset: paginationMetadata.offset, limit: paginationMetadata.limit};
 
         const products = await this.productService.getAllProducts(productFiltersDTO, paginationsParams);
         paginationMetadata.count = products.length;
-        const paginationMetadataResponseDTO = new PaginationMetadataResponseDTO(paginationMetadata);
+        const paginationMetadataResponseDTO: PaginationMetadataResponseDTO = toPaginationMetadataResponseDTO(paginationMetadata);
         const productResponse = products.map(product => new ProductResponseDTO(product));
 
         //res.success es un metodo que se define en el middleware (en shared/infrastructure/middleware/response-handlers.js)
@@ -70,7 +71,7 @@ class ProductController {
       } catch (error) {
         //Aqui se hace next para que vaya al handler de errores y se maneje el error
         //Se envia un httpError.InternalServerError, esto ya tiene definido el status code y se le envia el mensaje.
-        next(httpError.InternalServerError(error.message));
+        return next(httpError.InternalServerError(error.message));
       }
     } 
 
@@ -85,9 +86,9 @@ class ProductController {
             //El erro.status puede deifnirse incluso en la capa repositorio, pero debe hacerse n esta capa porque controller es la encargada de definir
             //temas como el status code y otros temas (auqnue podria ir en un middleware)
             if(error instanceof ProductoNotFoundError){
-                next(httpError.NotFoundError(error.message));
+                return next(httpError.NotFoundError(error.message));
             }
-            next(httpError.InternalServerError(error.message))
+            return next(httpError.InternalServerError(error.message))
         }
     }
 
@@ -102,13 +103,13 @@ class ProductController {
             const requestBody = req.body;
             //Si el req.body no es un array, da error con un if
             if (!Array.isArray(requestBody)) {
-                next(httpError.BadRequestError('El body debe ser un array de productos'));
+                return next(httpError.BadRequestError('El body debe ser un array de productos'));
             }
             //Recorremos el array de productos y validamos que cada producto tenga los campos obligatorios (sku, title, category_code, description e is_published)
             for (let i = 0; i < requestBody.length; i++) {
                 const product = requestBody[i];
                 if (!product.sku || !product.title || !product.category_code || !product.description || product.is_published == undefined) {
-                    next(httpError.BadRequestError(`El producto en la posicion ${i} no tiene todos los campos obligatorios: sku, title, category_code, description e is_published`));
+                    return next(httpError.BadRequestError(`El producto en la posicion ${i} no tiene todos los campos obligatorios: sku, title, category_code, description e is_published`));
                 }
             }
             const result = await this.productService.createProduct(requestBody);
@@ -116,9 +117,9 @@ class ProductController {
             res.status(201).success({data: productResponse});
         } catch (error) {
             if(error instanceof ProductWithSKUAlreadyExistsError){
-                next(httpError.BadRequestError(error.message));
+                return next(httpError.BadRequestError(error.message));
             }
-            next(httpError.InternalServerError(error.message));
+            return next(httpError.InternalServerError(error.message));
         }
     }
 
@@ -127,13 +128,13 @@ class ProductController {
             const requestBody = req.body;
             //Si el req.body no es un array, da error con un if
             if (!Array.isArray(requestBody)) {
-                next(httpError.BadRequestError('El body debe ser un array de productos'));
+                return next(httpError.BadRequestError('El body debe ser un array de productos'));
             }
             //Recorremos el array de productos y validamos que cada producto tenga los campos obligatorios (sku, title, category_code, description e is_published)
             for (let i = 0; i < requestBody.length; i++) {
                 const product = requestBody[i];
                 if (!product.sku || !product.title || !product.category_code || !product.description || product.is_published == undefined) {
-                    next(httpError.BadRequestError(`El producto en la posicion ${i} no tiene todos los campos obligatorios: sku, title, category_code, description e is_published`));
+                    return next(httpError.BadRequestError(`El producto en la posicion ${i} no tiene todos los campos obligatorios: sku, title, category_code, description e is_published`));
                 }
             }
             const result = await this.productService.updateFullProduct(requestBody);
@@ -142,9 +143,9 @@ class ProductController {
             res.status(201).success({data:productResponse});
         } catch (error) {
             if(error instanceof ProductoNotFoundError){
-                next(httpError.NotFoundError(error.message));
+                return next(httpError.NotFoundError(error.message));
             }
-            next(httpError.InternalServerError(error.message));
+            return next(httpError.InternalServerError(error.message));
         }
     }
 
@@ -153,13 +154,13 @@ class ProductController {
             const requestBody = req.body;
             //Si el req.body no es un array, da error con un if
             if (!Array.isArray(requestBody)) {
-                next(httpError.BadRequestError('El body debe ser un array de productos'));
+                return next(httpError.BadRequestError('El body debe ser un array de productos'));
             }
             //Recorremos el array de productos y validamos que cada producto tenga los campos obligatorios (sku, title, category_code, description e is_published)
             for (let i = 0; i < requestBody.length; i++) {
                 const product = requestBody[i];
                 if (!product.sku) {
-                    next(httpError.BadRequestError(`El producto en la posicion ${i} no tiene todos los campos obligatorios para actualizar: sku`));
+                    return next(httpError.BadRequestError(`El producto en la posicion ${i} no tiene todos los campos obligatorios para actualizar: sku`));
                 }
             }
             const result = await this.productService.updateProduct(requestBody);
@@ -168,9 +169,9 @@ class ProductController {
             res.status(200).success({data: productResponse});
         } catch (error) {
             if(error instanceof ProductoNotFoundError){
-                next(httpError.NotFoundError(error.message));
+                return next(httpError.NotFoundError(error.message));
             }
-            next(httpError.InternalServerError(error.message));
+            return next(httpError.InternalServerError(error.message));
         }
     }
 
@@ -180,13 +181,13 @@ class ProductController {
             let arrayDeSkus = [];
             //Si el req.body no es un array, da error con un if
             if (!Array.isArray(requestBody)) {
-                next(httpError.BadRequestError('El body debe ser un array de productos'));
+                return next(httpError.BadRequestError('El body debe ser un array de productos'));
             }
             //Recorremos el array de productos y validamos que cada producto tenga los campos obligatorios (sku, title, category_code, description e is_published)
             for (let i = 0; i < requestBody.length; i++) {
                 const product = requestBody[i];
                 if (!product.sku) {
-                    next(httpError.BadRequestError(`El producto en la posicion ${i} no tiene todos los campos obligatorios para eliminar: sku`));
+                    return next(httpError.BadRequestError(`El producto en la posicion ${i} no tiene todos los campos obligatorios para eliminar: sku`));
                 }
                 arrayDeSkus.push({sku : product.sku});
             }
@@ -195,9 +196,9 @@ class ProductController {
             res.status(200).success({data: productResponse});
         } catch (error) {
             if(error instanceof ProductoNotFoundError){
-                next(httpError.NotFoundError(error.message));
+                return next(httpError.NotFoundError(error.message));
             }
-            next(httpError.InternalServerError(error.message));
+            return next(httpError.InternalServerError(error.message));
         }
     }
 

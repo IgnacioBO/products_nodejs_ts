@@ -4,7 +4,7 @@ const Offer = require('../domain/offer-entity.js');
 const Price = require('../domain/price-vo.js');
 const OfferRepository = require('../domain/offer-repository.js');
 const OfferFilters = require('../domain/offer-filters.js');
-const PaginationsParams = require('../../shared/domain/paginations-params-vo.js');
+const PaginationsParams = require('../../shared/domain/paginations-params-vo');
 const {OfferNotFoundError} = require('../domain/offer-errors.js');
 
 class OfferMongoDBRepository extends OfferRepository {

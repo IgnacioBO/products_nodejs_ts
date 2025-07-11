@@ -1,12 +1,12 @@
 //@ts-check
 const Offer = require('../domain/offer-entity.js');
 const Price = require('../domain/price-vo.js');
-const OfferFilters = require('../domain/offer-filters.js');
+const OfferFilters = require('../domain/offer-filters');
 const OfferRepository = require('../domain/offer-repository.js');
 //const OfferFiltersDTO = require('../application/offer-filters-dto.js');
-const PaginationsParams = require('../../shared/domain/paginations-params-vo.js');
-const ProductService = require('../../products/application/product-service.js');
-const {ProductoNotFoundError} = require('../../products/domain/product-errors.js');
+const PaginationsParams = require('../../shared/domain/paginations-params-vo');
+const ProductService = require('../../products/application/product-service');
+const {ProductoNotFoundError} = require('../../products/domain/product-errors');
 const OfferFiltersDTO = require('./offer-filters-dto.js');
 
 

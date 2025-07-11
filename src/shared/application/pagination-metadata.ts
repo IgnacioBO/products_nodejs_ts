@@ -1,19 +1,13 @@
 //@ts-check
 class PaginationMetadata {
-    page;
-    count;
-    totalCount;
-    pageSize;
-    totalPages;
+    page: number;
+    count?: number;
+    totalCount: number;
+    pageSize: number;
+    totalPages: number;
 
-    //JSDOC
-    /**
-     * @param {number} page - Current page number
-     * @param {number} pageSize - Number of items per page
-     * @param {number} totalItems - Total number of items
-     * @param {number} perPageDefault - Default number of items per page
-     */
-  constructor(page, pageSize, totalItems, perPageDefault) {
+
+  constructor(page: number, pageSize: number, totalItems: number, perPageDefault: number, count?: number) {
     if (pageSize <=0){
         pageSize = perPageDefault;
     }
@@ -44,6 +38,7 @@ class PaginationMetadata {
     this.page = page;
     this.pageSize = pageSize;
     this.totalPages = pageCount;
+    this.count = count;
 
   }
 
@@ -56,4 +51,4 @@ class PaginationMetadata {
   }
 }
 
-module.exports = PaginationMetadata;
+export default PaginationMetadata;

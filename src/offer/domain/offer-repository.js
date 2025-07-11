@@ -1,7 +1,7 @@
 //@ts-check
 const Offer = require('./offer-entity.js');
 const OfferFilters = require('./offer-filters.js');
-const PaginationsParams = require('../../shared/domain/paginations-params-vo.js');
+const PaginationsParams = require('../../shared/domain/paginations-params-vo');
 
 /**
  * Usando JSDoc para documentar el código dejando claro que es una interfaz

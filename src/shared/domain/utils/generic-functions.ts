@@ -33,7 +33,7 @@ function validateArrayField(field: any, fieldName: string, type: string, require
     }
 }
 //export
-module.exports = {
+export {
     validateField,
     validateArrayField
 };

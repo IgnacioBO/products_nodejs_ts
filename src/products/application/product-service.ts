@@ -1,9 +1,9 @@
 //@ts-check
-const Product = require('../domain/product-entity.js');
-const Attribute = require('../domain/attribute-vo.js');
-const ProductFilters = require('../domain/product-filters.js');
+const Product = require('../domain/product-entity').default;
+const Attribute = require('../domain/attribute-vo').default;
+import ProductFilters from'../domain/product-filters';
 const ProductFiltersDTO = require('../application/product-filters-dto.js');
-const PaginationsParams = require('../../shared/domain/paginations-params-vo.js');
+const PaginationsParams = require('../../shared/domain/paginations-params-vo');
 
 
 //Aqui haremos una clase ProductService que se encargara de manejar 
@@ -37,20 +37,19 @@ class ProductService {
     //Transformamos el DTO a un objeto de tipo ProductFilters
     //Aqui a futuro en vez de transformar el DTO a un objeto de tipo ProductFilters directamente
     //podriamos usar un mapper que se encargue de transformar el DTO a un objeto de tipo ProductFilters
-    const productFilters = new ProductFilters({
+    const productFilters: ProductFilters = {
       sku: productFiltersDTO.sku,
-      category_code: productFiltersDTO.category_code,
-    });
+      category_code: productFiltersDTO.category_code    };
 
     const productos = await this.productRepository.getAllProducts(productFilters, paginationsParams);
     return productos;
   }
 
   async count (productFiltersDTO){
-    const productFilters = new ProductFilters({
+    const productFilters: ProductFilters = {
       sku: productFiltersDTO.sku,
-      category_code: productFiltersDTO.category_code,
-    });
+      category_code: productFiltersDTO.category_code
+    };
     const count = await this.productRepository.count(productFilters);
     return count;
 

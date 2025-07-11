@@ -1,21 +1,21 @@
 //@ts-check
 import pool from '../../shared/infrastructure/config/database';
-const Product = require('../domain/product-entity.js');
-const Attribute = require('../domain/attribute-vo.js');
-const {ProductRepository} = require('../domain/product-repository.js');
-const { ProductoNotFoundError, ProductWithSKUAlreadyExistsError } = require('../domain/product-errors.js');
-const ProductFilters = require('../domain/product-filters.js');
+const Product = require('../domain/product-entity').default;
+const Attribute = require('../domain/attribute-vo').default;
+import ProductRepository from '../domain/product-repository';
+const { ProductoNotFoundError, ProductWithSKUAlreadyExistsError } = require('../domain/product-errors');
+const ProductFilters = require('../domain/product-filters').default;
 const ProductPostgreDTO = require('./product-postgre-dto.js');
 
-//Aqui la clase PostgreProductRepository extiende de la clase ProductRepository
-//La verdad es que extends no es implement (osea no es una implementacion de una interface propaimente tal)
-//Esto porque en JS no existe el concepto de interface
-//Entonces hacemos que esta clase hereda de la clase ProductRepository para que 
-//tenga los metodos de la clase ProductRepository y tenga que implementar los metodos de la clase ProductRepository
+//Aqui la clase PostgreProductRepository implementa la interfaz ProductRepository
+//Esto sería tecnicametne lo que se conoce como un "adaptador" de salida en la arquitectura hexagonal 
+//Que implementa el "puerto" de salida definido por la interfaz ProductRepository
+//Interface ProductRepository: Puerto de salida (como maqueta de lo que debe hacer un repositorio de productos)
+// PostgreProductRepository: Adaptador de salida que implementa las funciones del puerto de salida
 /** 
  * @implements {ProductRepository} 
  */
-class PostgreProductRepository extends ProductRepository {
+class PostgreProductRepository implements ProductRepository {
     static SQL_SELECT_BASE = `
         SELECT
         p.sku,
