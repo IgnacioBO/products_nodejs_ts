@@ -1,9 +1,14 @@
 //@ts-check
-const Product = require('../domain/product-entity').default;
-const Attribute = require('../domain/attribute-vo').default;
+import Product from '../domain/product-entity';
+import Attribute from '../domain/attribute-vo';
 import ProductFilters from'../domain/product-filters';
-const ProductFiltersDTO = require('../application/product-filters-dto.js');
-const PaginationsParams = require('../../shared/domain/paginations-params-vo');
+import ProductFiltersDTO from '../application/product-filters-dto.js';
+import PaginationsParams  from '../../shared/domain/paginations-params-vo';
+import type ProductRepository from '../domain/product-repository.js';
+import {CreateProductRequestDTO, AttributeDTO} from './product-request-dto';
+import {jsonToCreateProductRequestDTO, createDTOtoEntity} from './product-request-mapper';
+
+
 
 
 //Aqui haremos una clase ProductService que se encargara de manejar 
@@ -21,58 +26,60 @@ const PaginationsParams = require('../../shared/domain/paginations-params-vo');
 // y en el archivo index.js crearemos una instancia de la clase ProductService
 
 class ProductService {
-//Cosntrucftor que recibirá el repositorio de productos como parametro (que lo inyectaremos desde el index.js)
-  constructor(productRepository) {
+  productRepository: ProductRepository;
+  //Constructor que recibirá el repositorio de productos como parametro (que lo inyectaremos desde el index.js)
+  constructor(productRepository: ProductRepository) {
     this.productRepository = productRepository;
   }
 
-  //GetAllProduct recibe un objeto de tipo productFiltersDTO y trasnformara este DTO a un objeto de tipo ProductFilters
-  /**
-   * * @param {ProductFiltersDTO} productFiltersDTO - Objeto de tipo ProductFiltersDTO
-   * * @param {PaginationsParams} paginationsParams - Objeto de tipo PaginationsParams
-   * * @returns {Promise<Product[]>} - Devuelve una promesa que resuelve un array de objetos de tipo Product
-   * * @throws {Error} - Lanza un error si no se puede obtener los productos
-   * */
-  async getAllProducts(productFiltersDTO, paginationsParams) {
-    //Transformamos el DTO a un objeto de tipo ProductFilters
+  //GetAllProduct recibe un objeto de tipo productFiltersDTO y parametros de paginacion (page y perpage) trasnformara este DTO a un objeto de tipo ProductFilters
+
+  async getAllProducts(productFiltersDTO: ProductFiltersDTO, paginationsParams: PaginationsParams): Promise<Product[]> {
+    //Transformamos el DTO a un intercface de tipo ProductFilters
     //Aqui a futuro en vez de transformar el DTO a un objeto de tipo ProductFilters directamente
     //podriamos usar un mapper que se encargue de transformar el DTO a un objeto de tipo ProductFilters
     const productFilters: ProductFilters = {
       sku: productFiltersDTO.sku,
-      category_code: productFiltersDTO.category_code    };
+      category_code: productFiltersDTO.category_code
+    };
 
-    const productos = await this.productRepository.getAllProducts(productFilters, paginationsParams);
+    const productos: Product[] = await this.productRepository.getAllProducts(productFilters, paginationsParams);
     return productos;
   }
 
-  async count (productFiltersDTO){
+  async count (productFiltersDTO: ProductFiltersDTO): Promise<number> {
     const productFilters: ProductFilters = {
       sku: productFiltersDTO.sku,
       category_code: productFiltersDTO.category_code
     };
-    const count = await this.productRepository.count(productFilters);
+    const count: number = await this.productRepository.count(productFilters);
     return count;
 
   }
 
-  async getProductBySku(sku) {
-    let rows;
+  async getProductBySku(sku: string): Promise<Product[]> {
     //Obtenemos las filas de productRepository que devolvera un array de objetos
     try{
-        const productos = await this.productRepository.getProductBySku(sku)
+        const productos: Product[] = await this.productRepository.getProductBySku(sku)
         return productos;
     }
-    catch (error) {
+    catch (error: unknown) {
         //console.log(error);
         throw error;
     }
   }
-  async createProduct(products) {
+  
+  async createProduct(productsDTO: CreateProductRequestDTO[]): Promise<Product[]> {
     try{
         //Transformamos el array de productos de un json a un array de objetos de la clase Product
-        const productsObjectArray = products.map(p => this._jsonArrayToProducts(p));
+        //const productsObjectArray = products.map(p => jsonToCreateProductRequestDTO(p));
         //Aqui llamamos al repositorio de productos y le pasamos el array de objetos de la clase Product
         //El repo hace la insercion y nos devuelve un array de objetos Product con los datos insertados
+        console.log("productsDTO", productsDTO);
+        const productsObjectArray: Product[] = productsDTO.map(p => createDTOtoEntity(p));
+        console.log("productsObjectArray", productsObjectArray);
+
+
         const result = await this.productRepository.createProduct(productsObjectArray);
         return result;
     }
@@ -82,6 +89,8 @@ class ProductService {
 
   }
 
+
+  //CreateDTOtoEntity
   async updateFullProduct(products) {
     try{
         //Transformamos el array de productos de un json a un array de objetos de la clase Product
@@ -110,7 +119,6 @@ class ProductService {
 
   async deleteProduct(products) {
     try{
-        const productsObjectArray = products.map(p => this._jsonArrayToProducts(p));
         const result = await this.productRepository.deleteProduct(productsObjectArray);
         return result;
     }
@@ -158,4 +166,4 @@ class ProductService {
 
 
 
-module.exports = ProductService;
+export default ProductService;

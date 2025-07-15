@@ -5,11 +5,11 @@ La idea nació para optimizar llamadas remotas costosas, reduciendo round-trips 
 DTO vs Value Object
 Los Value Objects del dominio representan conceptos ricos con reglas de invarianza e igualdad basada en valores, 
 mientras que los DTOs solo almacenan, serializan y deserializan datos sin validar su contenido*/
-class ProductFiltersDTO {
-  constructor({ sku, category_code}) {
-    this.sku = sku;
-    this.category_code = category_code;
-  }
+
+interface ProductFiltersDTO {
+
+  sku?: string;
+  category_code?: string;
 }
 
-module.exports = ProductFiltersDTO;
+export default ProductFiltersDTO;

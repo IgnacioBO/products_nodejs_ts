@@ -1,18 +1,22 @@
 //@ts-check
 const { ProductoNotFoundError, ProductWithSKUAlreadyExistsError } = require("../domain/product-errors"); //Para poder identificar el tipo de error (instance of) que viene desde las capas dominio y poder manejarlo en el controller
 const httpError = require("../../shared/infrastructure/errors/http-errors"); //Para poder enviar al cliente error con status code y mensaje de error
-const ProductFiltersDTO = require('../application/product-filters-dto.js');
+import ProductFiltersDTO from '../application/product-filters-dto';
 import PaginationMetadata from "../../shared/application/pagination-metadata";
 import type PaginationMetadataResponseDTO from "../../shared/application/pagination-metadata-dto";
 import { toPaginationMetadataResponseDTO } from "../../shared/application/pagination-metadata-mapper";
 const PaginationsParams = require("../../shared/domain/paginations-params-vo");
 const ProductResponseDTO = require("./product-response-dto.js");
+import {CreateProductRequestDTO, AttributeDTO} from '../application/product-request-dto';
+import {jsonToCreateProductRequestDTO} from '../application/product-request-mapper';
+import type ProductService from '../application/product-service.js';
 
 
 class ProductController {
+    productService: ProductService;
     //Constructor para controller que recibe el servicio de productos a través 
     //de la inyección de dependencias
-    constructor(productService) {
+    constructor(productService: ProductService) {
       this.productService = productService;
   
       //Ligamos el contexto para que cuando se use como callback el getAll() pueda acceder a la propiedad this.productService
@@ -51,10 +55,10 @@ class ProductController {
         //Creamos un objeto de tipo ProductFiltersDTO que es un DTO que tiene los campos para filtrar los productos
         //Luego el servicio se encargara de transformar el DTO en un objeto de tipo ProductFilters (del dominio)
         //Le pasamos los parametros de la query string (query params) para filtrar los productos
-        const productFiltersDTO = new ProductFiltersDTO({
+        const productFiltersDTO: ProductFiltersDTO = {
             sku: sku,
             category_code: category_code,
-        });
+        };
 
         const totalCount = await this.productService.count(productFiltersDTO);
         const paginationMetadata = new PaginationMetadata(Number(page), Number(limit), totalCount, 50);
@@ -112,7 +116,9 @@ class ProductController {
                     return next(httpError.BadRequestError(`El producto en la posicion ${i} no tiene todos los campos obligatorios: sku, title, category_code, description e is_published`));
                 }
             }
-            const result = await this.productService.createProduct(requestBody);
+            const productsDTOArray: CreateProductRequestDTO[] = requestBody.map(rb => jsonToCreateProductRequestDTO(rb));
+            //Version corta: const productsDTOArray = requestBody.map(jsonToCreateProductRequestDTO);
+            const result = await this.productService.createProduct(productsDTOArray);
             const productResponse = result.map(product => new ProductResponseDTO(product));
             res.status(201).success({data: productResponse});
         } catch (error) {

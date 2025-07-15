@@ -10,3 +10,23 @@
 
 //Algunos dicen que debenn ir en la capa de infrastructure porque por ejemplo convertir a JSON es parte de 
 // la infraestructura, porque es parte de la forma en que se comunica con el mundo exterior (API REST, por ejemplo).
+
+export interface AttributeDTO {
+    name_code: string;
+    name?: string;
+    value_code: string;
+    value?: string;
+}
+
+export interface CreateProductRequestDTO {
+    sku: string;
+    parent_sku?: string;
+    title: string;
+    category_code: string;
+    description: string;
+    short_description?: string;
+    is_published?: boolean;
+    attributes?: AttributeDTO[];
+}
+
+
