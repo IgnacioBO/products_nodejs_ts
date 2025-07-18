@@ -1,11 +1,14 @@
 //@ts-check
 import pool from '../../shared/infrastructure/config/database';
-const Product = require('../domain/product-entity').default;
-const Attribute = require('../domain/attribute-vo').default;
+import Product from '../domain/product-entity';
+import Attribute from '../domain/attribute-vo';
 import ProductRepository from '../domain/product-repository';
-const { ProductoNotFoundError, ProductWithSKUAlreadyExistsError } = require('../domain/product-errors');
-const ProductFilters = require('../domain/product-filters').default;
-const ProductPostgreDTO = require('./product-postgre-dto.js');
+import { ProductoNotFoundError, ProductWithSKUAlreadyExistsError } from '../domain/product-errors';
+import ProductFilters from '../domain/product-filters';
+import {ProductPostgreDTO} from './product-postgre-dto';
+import { productToPostgreDTO, rowToProduct } from './product-postgre-mapper';
+import PaginationParams from '../../shared/domain/paginations-params-vo';
+import { QueryResult } from 'pg';
 
 //Aqui la clase PostgreProductRepository implementa la interfaz ProductRepository
 //Esto sería tecnicametne lo que se conoce como un "adaptador" de salida en la arquitectura hexagonal 
@@ -16,7 +19,7 @@ const ProductPostgreDTO = require('./product-postgre-dto.js');
  * @implements {ProductRepository} 
  */
 class PostgreProductRepository implements ProductRepository {
-    static SQL_SELECT_BASE = `
+    static SQL_SELECT_BASE: string = `
         SELECT
         p.sku,
         p.parent_sku,
@@ -51,17 +54,18 @@ class PostgreProductRepository implements ProductRepository {
     //COALESCE (JSON_AGG(...) JSON FIILTER (...), '[]') es para devolver un array vacio [] en caso de que no haya atributos
     //La función COALESCE(arg1, arg2, …) evalúa los argumentos de izquierda a derecha y devuelve el primer valor que no sea NULL. Si todos los argumentos son NULL, retorna NULL
     //Entonces en este caso, COALESCE( JSON_AGG(... ) FILTER(...), '[]' ) significa que si JSON_AGG produce NULL (porque no hay filas de atributos asociadas), entonces se usará el literal '[]' en su lugar
-    
-    static SQL_COUNT_BASE = `
+
+    static SQL_COUNT_BASE: string = `
         SELECT COUNT(*)
         FROM products p        
     `;
-    async getAllProducts(productFilters, paginationParams) {
+
+    async getAllProducts(productFilters: ProductFilters, paginationParams: PaginationParams) : Promise<Product[]> {
 
         //Wherfilter devueelve la clause y los params para la consulta SQL
         const whereFilter = this._generateWhereFilters(productFilters, "p.");
 
-        const result = await pool.query(
+        const result: QueryResult<any> = await pool.query(
             `${PostgreProductRepository.SQL_SELECT_BASE}
             ${whereFilter.clause}
             GROUP BY p.sku, p.parent_sku, p.title, p.category_code, c.category_name, p.description, p.is_published
@@ -91,7 +95,7 @@ class PostgreProductRepository implements ProductRepository {
         //En este caso, lo que hacemos es recorrer el array de filas y por cada fila, llamamos a la funcion _mapRowToProduct que nos devuelve un objeto Product
         //Asi se llamara a la funcion una x cantidad de veces como filas haya en el array
         //El resultado de este map es un nuevo array de objetos Product, que es lo que queremos devolver
-        return rows.map(filaProducto => this._mapRowToProduct(filaProducto));
+        return rows.map(rowToProduct)
     }
 
     async count(productFilters) {
@@ -127,14 +131,18 @@ class PostgreProductRepository implements ProductRepository {
             }
 
             let rows = result.rows
-            return rows.map(filaProducto => this._mapRowToProduct(filaProducto));    
+            return rows.map(rowToProduct);
     }
 
-    async createProduct(products) {
+    async createProduct(products : Product[]) {
         //Aqui para hacer el insert, como queremos insertar en 2 tablas (products y products_attributes)
         //En vez de usar pool.query 2 veces, lo que hacemos es usar una transaccion
         //Esto usando el metodo pool.query y pasandole un array de queries
         //El primer query es el insert en la tabla products y el segundo es el insert en la tabla products_attributes
+    
+
+        const productsDTO : ProductPostgreDTO[] = products.map(productToPostgreDTO);
+        console.log(productsDTO)
 
         //pool.connect() es un metodo que nos permite conectarnos a la base de datos y obtener un cliente
         const client = await pool.connect();
@@ -144,14 +152,14 @@ class PostgreProductRepository implements ProductRepository {
             //Haremos un for para recorrer el array de productos y por cada producto haremos un insert en la tabla products
             //Y por cada producto haremos un insert en la tabla products_attributes
             const createdProducts = [];
-            for (const product of products) {
+            for (const product of productsDTO) {
                 try{
                     //Hacemos el primer insert en la tabla products
                     const resultProd = await client.query(
                     `INSERT INTO products (sku, parent_sku, title, category_code, description, is_published, short_description)
                     VALUES ($1,$2,$3,$4,$5,$6,$7)
                     RETURNING *;`,
-                    [product.sku, product.parentSku, product.title, product.categoryCode, product.description, product.isPublished, product.shortDescription]
+                    [product.sku, product.parent_sku, product.title, product.category_code, product.description, product.is_published, product.short_description]
                     );
                     createdProducts.push(resultProd.rows[0]);
 
@@ -185,7 +193,7 @@ class PostgreProductRepository implements ProductRepository {
             await client.query('COMMIT');
             //Devolvemos el producto creado y los atributos creados
             //AL createdProduct lo ponemos entre [] para que sea un array de un solo elemento y asi poder mapearlo a objeto Product
-            return createdProducts.map(filaProducto => this._mapRowToProduct(filaProducto));   
+            return createdProducts.map(rowToProduct)
         } catch (error) {
             await client.query('ROLLBACK'); // Si hay un error, hacemos rollback de la transaccion
         
@@ -196,7 +204,9 @@ class PostgreProductRepository implements ProductRepository {
 
     }
 
-    async updateFullProduct(products) {
+    async updateFullProduct(products : Product[]) {
+        const productsDTO = products.map(productToPostgreDTO);
+
         const client = await pool.connect();
         try {
             //Iniciamos la transaccion
@@ -204,7 +214,7 @@ class PostgreProductRepository implements ProductRepository {
             //Haremos un for para recorrer el array de productos y por cada producto haremos un insert en la tabla products
             //Y por cada producto haremos un insert en la tabla products_attributes
             const updatedProducts = [];
-            for (const product of products) {
+            for (const product of productsDTO) {
                 try{
                     //Primero borramos los atributos del producto
                     let queryAttr = `DELETE from products_attributes WHERE sku = $1;`;
@@ -214,7 +224,7 @@ class PostgreProductRepository implements ProductRepository {
                     const resultProd = await client.query(
                     `UPDATE products SET parent_sku = $2, title = $3, category_code = $4, description = $5, is_published = $6, short_description = $7
                     WHERE sku = $1 RETURNING *;`,
-                    [product.sku, product.parentSku, product.title, product.categoryCode, product.description, product.isPublished, product.shortDescription]
+                    [product.sku, product.parent_sku, product.title, product.category_code, product.description, product.is_published, product.short_description]
                     );
                     if(resultProd.rowCount === 0) {
                         throw new ProductoNotFoundError(product.sku);
@@ -250,7 +260,7 @@ class PostgreProductRepository implements ProductRepository {
             await client.query('COMMIT');
             //Devolvemos el producto creado y los atributos creados
             //AL createdProduct lo ponemos entre [] para que sea un array de un solo elemento y asi poder mapearlo a objeto Product
-            return updatedProducts.map(filaProducto => this._mapRowToProduct(filaProducto));   
+            return updatedProducts.map(rowToProduct)
         } catch (error) {
             await client.query('ROLLBACK'); // Si hay un error, hacemos rollback de la transaccion
         
@@ -261,8 +271,8 @@ class PostgreProductRepository implements ProductRepository {
 
     }
 
-    async updateProduct(products) {
-        const productsDTO = products.map(product => new ProductPostgreDTO(product));
+    async updateProduct(products: Product[]) {
+        const productsDTO = products.map(productToPostgreDTO);
         const client = await pool.connect();
         try {
             //Iniciamos la transaccion
@@ -331,7 +341,8 @@ class PostgreProductRepository implements ProductRepository {
             await client.query('COMMIT');
             //Devolvemos el producto creado y los atributos creados
             //AL updatedProducts lo ponemos entre [] para que sea un array de un solo elemento y asi poder mapearlo a objeto Product
-            return updatedProducts.map(filaProducto => this._mapRowToProduct(filaProducto));   
+            return updatedProducts.map(rowToProduct)
+
         } catch (error) {
             await client.query('ROLLBACK'); // Si hay un error, hacemos rollback de la transaccion
         
@@ -341,17 +352,16 @@ class PostgreProductRepository implements ProductRepository {
           }
     }
     
-    /**
-     * @param {Product[]} products 
-     * @returns {Promise<Product[]>}
-     */
-    async deleteProduct(products) {
+
+    async deleteProduct(products: Product[]) {
+        const productsDTO = products.map(productToPostgreDTO);
+
         const client = await pool.connect();
         try {
             //Iniciamos la transaccion
             await client.query('BEGIN');
             const deletedProducts = [];
-            for (const product of products) {
+            for (const product of productsDTO) {
                 try{
                     let queryAttr = `DELETE from products_attributes WHERE sku = $1 RETURNING *;`;
                     let query = `DELETE from products WHERE sku = $1 RETURNING sku;`; 
@@ -371,7 +381,8 @@ class PostgreProductRepository implements ProductRepository {
             }
             await client.query('COMMIT');
             //AL updatedProducts lo ponemos entre [] para que sea un array de un solo elemento y asi poder mapearlo a objeto Product
-            return deletedProducts.map(filaProducto => this._mapRowToProduct(filaProducto));   
+            return deletedProducts.map(rowToProduct)
+
         } catch (error) {
             await client.query('ROLLBACK'); // Si hay un error, hacemos rollback de la transaccion
         
@@ -381,60 +392,22 @@ class PostgreProductRepository implements ProductRepository {
           }
     }
 
-
-    //Metodo privado que mapea una fila a un objeto Product
-    _mapRowToProduct(row) {
-        //Nos attrsArray es un array, si no es un array (null o undefinder por ejemlo) lo convertimos a un array vacio
-        const attrsArray = Array.isArray(row.attributes) ? row.attributes : [];
-         //Aqui hago algo similar a rows.map pero recorro el array de atributos
-        // Osea que por cada atributo del array de atributos de la fila
-        // creo un nuevo objeto Attribute y lo guardo en un array de atributos
-        //Debo hacer un if para ver si elemento.atributes es undefined o no
-        //Con este if:
-        const attributes = attrsArray.map(a =>
-          new Attribute({
-            name_code:  a.name_code,
-            name:       a.name,
-            value_code: a.value_code,
-            value:      a.value
-          })
-        );
-    
-        return new Product({
-          sku:           row.sku,
-          ...(row.parent_sku && { parent_sku: row.parent_sku }),  // sólo inserta parent_sku si no viene undefined o null
-          title:         row.title,
-          categoryCode: row.category_code,
-          categoryName: row.category_name,
-          description:   row.description,
-          ...(row.short_description && { shortDescription: row.short_description }), // sólo inserta short_description si no viene undefined o null
-          isPublished: row.is_published,
-          ...(attributes.length && { attributes })// sólo inserta attributes si hay al menos uno
-        });
-    }
-
-    /** 
-     * @param {ProductFilters} productFilters
-     * @param {string} prefix
-     * //returns an object with the clause and params to be used in the query
-     * @returns {{clause: string, params: Array}}
-     */
-    _generateWhereFilters(productFilters, prefix = "") {
+    _generateWhereFilters(productFilters: ProductFilters, prefix: string = "") : {clause: string, params: Array<any>} {
         //Aqui generamos los filtros para la consulta SQL
-        let whereFilter = 'WHERE 1=1'; // 1=1 es una forma de decir que siempre se cumple la condicion, osea que no hay filtros
-        let clauses = []; //Array de clausulas para los filtros, osea los AND que se van a agregar a la consulta SQL
-        let params = []; //Los valores de los filtros, osea los $1, $2, $3, etc que se van a agregar a la consulta SQL
-        let index = 1; //Index para los valores de los filtros, osea el $1, $2, $3, asi evitamos inyecciones SQL
+        let whereFilter: string = 'WHERE 1=1'; // 1=1 es una forma de decir que siempre se cumple la condicion, osea que no hay filtros
+        let clauses: string[] = []; //Array de clausulas para los filtros, osea los AND que se van a agregar a la consulta SQL
+        let params: any[] = []; //Los valores de los filtros, osea los $1, $2, $3, etc que se van a agregar a la consulta SQL
+        let index: number = 1; //Index para los valores de los filtros, osea el $1, $2, $3, asi evitamos inyecciones SQL
 
-        for (const key in productFilters) {
-            if (productFilters[key] != undefined) {
+        for (const [key, val] of Object.entries(productFilters)) {
+            if (val != undefined) {
                 //Si el valor es un string, lo agregamos a la consulta SQL con comillas simples
-                if(typeof productFilters[key] === "string" && productFilters[key].trim() === ""){     
+                if(typeof val === "string" && val.trim() === ""){     
                     continue; //Si el valor es un string vacio, lo ignoramos            
                 }
                 else{
                     clauses.push(`${prefix}${key} = $${index}`);
-                    params.push(productFilters[key]);
+                    params.push(val);
                     index++;
                 }
             }

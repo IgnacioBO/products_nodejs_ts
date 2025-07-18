@@ -56,7 +56,7 @@ class ProductService {
   async getProductBySku(sku: string): Promise<Product[]> {
     //Obtenemos las filas de productRepository que devolvera un array de objetos
     try{
-        const productos: Product[] = await this.productRepository.getProductBySku(sku)
+        const productos: Product[] = await this.productRepository.getProductBySku(sku);
         return productos;
     }
     catch (error: unknown) {
