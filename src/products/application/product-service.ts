@@ -1,15 +1,11 @@
 //@ts-check
 import Product from '../domain/product-entity';
-import Attribute from '../domain/attribute-vo';
 import ProductFilters from'../domain/product-filters';
 import ProductFiltersDTO from '../application/product-filters-dto.js';
 import PaginationsParams  from '../../shared/domain/paginations-params-vo';
 import type ProductRepository from '../domain/product-repository.js';
-import {CreateProductRequestDTO, AttributeDTO} from './product-request-dto';
-import {jsonToCreateProductRequestDTO, createDTOtoEntity} from './product-request-mapper';
-
-
-
+import {CreateProductRequestDTO, UpdateFullProductRequestDTO, UpdatePartialProductRequestDTO, DeleteProductRequestDTO} from './product-request-dto';
+import {requestDTOtoEntity, requestDeleteDTOtoEntity} from './product-request-mapper';
 
 //Aqui haremos una clase ProductService que se encargara de manejar 
 // la logica de negocio de los productos y de interactuar con el repositorio de productos
@@ -75,12 +71,8 @@ class ProductService {
         //const productsObjectArray = products.map(p => jsonToCreateProductRequestDTO(p));
         //Aqui llamamos al repositorio de productos y le pasamos el array de objetos de la clase Product
         //El repo hace la insercion y nos devuelve un array de objetos Product con los datos insertados
-        console.log("productsDTO", productsDTO);
-        const productsObjectArray: Product[] = productsDTO.map(p => createDTOtoEntity(p));
-        console.log("productsObjectArray", productsObjectArray);
-
-
-        const result = await this.productRepository.createProduct(productsObjectArray);
+        const productsObjectArray: Product[] = productsDTO.map(p => requestDTOtoEntity(p));
+        const result : Product[] = await this.productRepository.createProduct(productsObjectArray);
         return result;
     }
     catch (error) {
@@ -91,13 +83,13 @@ class ProductService {
 
 
   //CreateDTOtoEntity
-  async updateFullProduct(products) {
+  async updateFullProduct(productsDTO: UpdateFullProductRequestDTO[]): Promise<Product[]> {
     try{
         //Transformamos el array de productos de un json a un array de objetos de la clase Product
-        const productsObjectArray = products.map(p => this._jsonArrayToProducts(p));
+        const productsObjectArray: Product[] = productsDTO.map(requestDTOtoEntity);
         //Aqui llamamos al repositorio de productos y le pasamos el array de objetos de la clase Product
         //El repo hace la insercion y nos devuelve un array de objetos Product con los datos insertados
-        const result = await this.productRepository.updateFullProduct(productsObjectArray);
+        const result : Product[] = await this.productRepository.updateFullProduct(productsObjectArray);
         return result;
     }
     catch (error) {
@@ -106,10 +98,10 @@ class ProductService {
 
   }
 
-  async updateProduct(products) {
+  async updateProduct(productsDTO: UpdatePartialProductRequestDTO[]): Promise<Product[]> {
     try{
-        const productsObjectArray = products.map(p => this._jsonArrayToProducts(p));
-        const result = await this.productRepository.updateProduct(productsObjectArray);
+        const productsObjectArray: Product[] = productsDTO.map(requestDTOtoEntity);
+        const result: Product[] = await this.productRepository.updateProduct(productsObjectArray);
         return result;
     }
     catch (error) {
@@ -117,9 +109,10 @@ class ProductService {
     }
   }
 
-  async deleteProduct(products) {
-    try{
-        const result = await this.productRepository.deleteProduct(productsObjectArray);
+  async deleteProduct(productsDTO: DeleteProductRequestDTO[]): Promise<Product[]> {
+ try{
+        const productsObjectArray: Product[] = productsDTO.map(requestDeleteDTOtoEntity);
+        const result: Product[] = await this.productRepository.deleteProduct(productsObjectArray);
         return result;
     }
     catch (error) {
@@ -127,43 +120,6 @@ class ProductService {
     }
 
   }
-
-  //Metodo privado que mapea un json a un objeto Product
-  //A futuro, este json a product no deberia esta en esta capa de application
-  //Porque application deberia recibir un objeto de tipo Product o un DTO de tipo Product pero no un json
-  //Ose la capa infrastructure deberia ser la que se encargue de transformar el json a un objeto de tipo Product o un DTO de tipo Product
-  _jsonArrayToProducts(json) {
-    //Nos attrsArray es un array, si no es un array (null o undefinder por ejemlo) lo convertimos a un array vacio
-    const attrsArray = Array.isArray(json.attributes) ? json.attributes : [];
-    //Aqui hago algo similar a rows.map pero recorro el array de atributos
-    // Osea que por cada atributo del array de atributos de la fila
-    // creo un nuevo objeto Attribute y lo guardo en un array de atributos
-    //Debo hacer un if para ver si elemento.atributes es undefined o no
-    //Con este if:
-    const attributes = attrsArray.map(a =>
-        new Attribute({
-        name_code:  a.name_code,
-        name:       a.name,
-        value_code: a.value_code,
-        value:      a.value
-        })
-    );
-
-    return new Product({
-        sku:           json.sku,
-        ...(json.parent_sku && { parent_sku: json.parent_sku }),  // sólo inserta parent_sku si no viene undefined o null
-        title:         json.title,
-        categoryCode: json.category_code,
-        categoryName: json.category_name,
-        description:   json.description,
-        ...(json.short_description && { shortDescription: json.short_description }), // sólo inserta short_description si no viene undefined o null
-        isPublished: json.is_published, // sólo inserta is_published si no viene undefined o null
-        ...(attributes.length && { attributes })// sólo inserta attributes si hay al menos uno
-    });
-    }
 }
-
-
-
 
 export default ProductService;

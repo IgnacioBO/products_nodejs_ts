@@ -29,4 +29,12 @@ export interface CreateProductRequestDTO {
     attributes?: AttributeDTO[];
 }
 
+export type UpdateFullProductRequestDTO = CreateProductRequestDTO;
 
+//De esta manera decimos que el DTO de UpdateProductRequestDTO es igual al de CreateProductRequestDTO
+//pero con el campo sku obligatorio, porque al actualizar un producto necesitamos el sku para identificarlo
+export type UpdatePartialProductRequestDTO = Partial<CreateProductRequestDTO> & { sku: string };
+
+export interface DeleteProductRequestDTO {
+    sku: string;
+}

@@ -7,8 +7,8 @@ import type PaginationMetadataResponseDTO from "../../shared/application/paginat
 import { toPaginationMetadataResponseDTO } from "../../shared/application/pagination-metadata-mapper";
 const PaginationsParams = require("../../shared/domain/paginations-params-vo");
 const ProductResponseDTO = require("./product-response-dto.js");
-import {CreateProductRequestDTO, AttributeDTO} from '../application/product-request-dto';
-import {jsonToCreateProductRequestDTO} from '../application/product-request-mapper';
+import {CreateProductRequestDTO, DeleteProductRequestDTO, UpdateFullProductRequestDTO, UpdatePartialProductRequestDTO} from '../application/product-request-dto';
+import {jsonToCreateProductRequestDTO, jsonToUpdateFullProductRequestDTO, jsonToUpdatePartialProductRequestDTO, jsonToDeleteProductRequestDTO} from '../application/product-request-mapper';
 import type ProductService from '../application/product-service.js';
 
 
@@ -143,7 +143,8 @@ class ProductController {
                     return next(httpError.BadRequestError(`El producto en la posicion ${i} no tiene todos los campos obligatorios: sku, title, category_code, description e is_published`));
                 }
             }
-            const result = await this.productService.updateFullProduct(requestBody);
+            const productsDTOArray: UpdateFullProductRequestDTO[] = requestBody.map(jsonToUpdateFullProductRequestDTO);
+            const result = await this.productService.updateFullProduct(productsDTOArray);
             const productResponse = result.map(product => new ProductResponseDTO(product));
             
             res.status(201).success({data:productResponse});
@@ -169,7 +170,8 @@ class ProductController {
                     return next(httpError.BadRequestError(`El producto en la posicion ${i} no tiene todos los campos obligatorios para actualizar: sku`));
                 }
             }
-            const result = await this.productService.updateProduct(requestBody);
+            const productsDTOArray: UpdatePartialProductRequestDTO[] = requestBody.map(jsonToUpdatePartialProductRequestDTO);
+            const result = await this.productService.updateProduct(productsDTOArray);
             const productResponse = result.map(product => new ProductResponseDTO(product));
 
             res.status(200).success({data: productResponse});
@@ -184,7 +186,6 @@ class ProductController {
     async deleteProduct(req, res, next) {
         try {
             const requestBody = req.body;
-            let arrayDeSkus = [];
             //Si el req.body no es un array, da error con un if
             if (!Array.isArray(requestBody)) {
                 return next(httpError.BadRequestError('El body debe ser un array de productos'));
@@ -195,9 +196,9 @@ class ProductController {
                 if (!product.sku) {
                     return next(httpError.BadRequestError(`El producto en la posicion ${i} no tiene todos los campos obligatorios para eliminar: sku`));
                 }
-                arrayDeSkus.push({sku : product.sku});
             }
-            const result = await this.productService.deleteProduct(arrayDeSkus);
+            const productsDTOArray: DeleteProductRequestDTO[] = requestBody.map(jsonToDeleteProductRequestDTO);
+            const result = await this.productService.deleteProduct(productsDTOArray);
             const productResponse = result.map(product => new ProductResponseDTO(product));
             res.status(200).success({data: productResponse});
         } catch (error) {
