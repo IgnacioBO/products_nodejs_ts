@@ -4,7 +4,7 @@
 
   //Extendemos la interfaz Response de express para agregarle un método success
   //Se usara <T> para que sea generico y "data" (payload) pueda ser de cualquier tipo
-  interface CustomResponse<T, U> extends Response {
+  export interface CustomResponse<T, U> extends Response {
     success(argumentos: { data?: T, message?: string, meta?: U }): Response;
     ok(argumentos: { data?: T, message?: string, meta?: U }): Response;
   }
