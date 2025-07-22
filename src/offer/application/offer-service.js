@@ -5,7 +5,7 @@ const OfferFilters = require('../domain/offer-filters');
 const OfferRepository = require('../domain/offer-repository.js');
 //const OfferFiltersDTO = require('../application/offer-filters-dto.js');
 const PaginationsParams = require('../../shared/domain/paginations-params-vo');
-const ProductService = require('../../products/application/product-service');
+const ProductService = require('../../products/application/product-service').default;
 const {ProductoNotFoundError} = require('../../products/domain/product-errors');
 const OfferFiltersDTO = require('./offer-filters-dto.js');
 

@@ -53,9 +53,9 @@ export function requestDTOtoEntity(dto: CreateProductRequestDTO | UpdateFullProd
 
     const attributes = dto.attributes?.map(a =>
         new Attribute({
-        name_code:  a.name_code,
+        nameCode:  a.name_code,
         name:       a.name,
-        value_code: a.value_code,
+        valueCode: a.value_code,
         value:      a.value
         })
     );

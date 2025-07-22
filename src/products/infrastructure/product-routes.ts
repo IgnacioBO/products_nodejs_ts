@@ -1,11 +1,11 @@
-//@ts-check
-const express = require('express');
-const { ErrorHandler } = require('../../shared/infrastructure/middlewares/response-handlers');
+import express, { RequestHandler } from 'express';
+import { ErrorHandler } from '../../shared/infrastructure/middlewares/response-handlers';
+import type ProductController from './product-controller'; // Adjust the path as needed
 
 //En vez de llamarlo ruta mejor llamarlo productRoutesFactory
 //Esto es una factory function que crea un router de productos
 //Esta funcion recibe como 
-function productRoutesFactory (options) {
+function productRoutesFactory (options: { productController: ProductController }): express.Router {
     //Recibira options que será un objeto literal con las propiedades que necesitemos
     //En este caso solo necesitamos el productController (Pero peude tener otro cono logger, midleware, etc)
     const { productController } = options;
@@ -18,17 +18,20 @@ function productRoutesFactory (options) {
         // 1. Le agrega la propiedad productController al objeto options (osea options.productController)
         // 2. Ademas crea una vairable productController que es igual a options.productController
       //Osea productController.getAll es lo mismo que options.productController.getAll
-      productController.getAll  // handler ligado al contexto
+      productController.getAll as RequestHandler  // handler ligado al contexto
     );
-    router.get('/:sku', productController.getBySku);
 
-    router.post('/', productController.createProduct);
+    //Usamos as RequestHandler (ya que getBySku esta recibiendo CustomResponse en vez de Response, que es lo que espera express)
+    //Como mejora lo mejor es Augmentar el Response de express para que tenga el metodo success, asi no tenemos que hacer el cast
+    router.get('/:sku', productController.getBySku as RequestHandler);
 
-    router.patch('/', productController.updateProduct);
+    router.post('/', productController.createProduct as RequestHandler);
 
-    router.delete('/', productController.deleteProduct);
+    router.patch('/', productController.updateProduct as RequestHandler);
 
-    router.put('/', productController.updateFullProduct);
+    router.delete('/', productController.deleteProduct as RequestHandler);
+
+    router.put('/', productController.updateFullProduct as RequestHandler);
 
 
       //router.use será generico para manejar errores en todas las rutas de este router
@@ -42,4 +45,4 @@ function productRoutesFactory (options) {
   };
   
 
-module.exports = productRoutesFactory;
+export default productRoutesFactory;

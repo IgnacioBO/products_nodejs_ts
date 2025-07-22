@@ -4,9 +4,9 @@ import Attribute from '../domain/attribute-vo';
 
 function attributeToPostgreDTO(attr: Attribute): AttributePostgreDTO {
   return {
-    name_code:  attr.name_code,    // ajusta según tu domain model
+    name_code:  attr.nameCode,    // ajusta según tu domain model
     name:       attr.name,
-    value_code: attr.value_code,
+    value_code: attr.valueCode,
     value:      attr.value
   };
 }
@@ -29,9 +29,9 @@ export function productToPostgreDTO(product: Product): ProductPostgreDTO {
 export function rowToProduct(row: any): Product {
         let attributes = row.attributes?.map((a: any) =>
           new Attribute({
-            name_code:  a.name_code,
+            nameCode:  a.name_code,
             name:       a.name,
-            value_code: a.value_code,
+            valueCode: a.value_code,
             value:      a.value
           })
         );

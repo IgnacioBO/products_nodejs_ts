@@ -5,7 +5,8 @@ const httpError = require("../../shared/infrastructure/errors/http-errors"); //P
 import PaginationMetadata from "../../shared/application/pagination-metadata";
 const PaginationsParams = require("../../shared/domain/paginations-params-vo");
 import type PaginationMetadataResponseDTO from "../../shared/application/pagination-metadata-dto";
-import { toPaginationMetadataResponseDTO } from "../../shared/application/pagination-metadata-mapper";const OfferResponseDTO = require("./offer-response-dto.js");
+import { toPaginationMetadataResponseDTO } from "../../shared/application/pagination-metadata-mapper";
+const OfferResponseDTO = require("./offer-response-dto.js");
 const OfferFiltersDTO = require("../application/offer-filters-dto.js");
 const { OfferNotFoundError } = require("../domain/offer-errors.js");
 const Offer = require("../domain/offer-entity.js");
@@ -175,4 +176,4 @@ class OfferController {
     } 
   }
   
-  module.exports = OfferController;
+ export default OfferController;

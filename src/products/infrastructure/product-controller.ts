@@ -1,15 +1,18 @@
-//@ts-check
-const { ProductoNotFoundError, ProductWithSKUAlreadyExistsError } = require("../domain/product-errors"); //Para poder identificar el tipo de error (instance of) que viene desde las capas dominio y poder manejarlo en el controller
-const httpError = require("../../shared/infrastructure/errors/http-errors"); //Para poder enviar al cliente error con status code y mensaje de error
+import { ProductoNotFoundError, ProductWithSKUAlreadyExistsError } from "../domain/product-errors"; //Para poder identificar el tipo de error (instance of) que viene desde las capas dominio y poder manejarlo en el controller
+import * as httpError from "../../shared/infrastructure/errors/http-errors"; //Para poder enviar al cliente error con status code y mensaje de error
 import ProductFiltersDTO from '../application/product-filters-dto';
 import PaginationMetadata from "../../shared/application/pagination-metadata";
 import type PaginationMetadataResponseDTO from "../../shared/application/pagination-metadata-dto";
 import { toPaginationMetadataResponseDTO } from "../../shared/application/pagination-metadata-mapper";
-const PaginationsParams = require("../../shared/domain/paginations-params-vo");
-const ProductResponseDTO = require("./product-response-dto.js");
+import PaginationsParams from "../../shared/domain/paginations-params-vo";
+import {ProductResponseDTO} from "./product-response-dto";
+import {productToResponseDTO} from "./product-response-mapper";
 import {CreateProductRequestDTO, DeleteProductRequestDTO, UpdateFullProductRequestDTO, UpdatePartialProductRequestDTO} from '../application/product-request-dto';
 import {jsonToCreateProductRequestDTO, jsonToUpdateFullProductRequestDTO, jsonToUpdatePartialProductRequestDTO, jsonToDeleteProductRequestDTO} from '../application/product-request-mapper';
 import type ProductService from '../application/product-service.js';
+import type { Request, Response, NextFunction } from 'express';
+import type { CustomResponse } from '../../shared/infrastructure/middlewares/response-handlers.js';
+import type Product from "../domain/product-entity";
 
 
 class ProductController {
@@ -35,17 +38,8 @@ class ProductController {
       this.updateFullProduct = this.updateFullProduct.bind(this);
     }
   
-    //Metodo para obtener todos los productos
-    //Recibe como parametro el request, response y next
-    //El next sirve para poder manejar errores y pasar al siguiente middleware
-    
-     /**
-     * Aca definimos los parametros para que el AUTOMCOMPLTEADO AYUDE
-     * @param {import("express").Request} req - The request object
-     * @param {import("express").Response & {success}} res - The response object
-     * @param {import("express").NextFunction} next - The next function
-     */
-    async getAll(req, res, next) {
+
+    async getAll(req: Request, res: CustomResponse<ProductResponseDTO[], PaginationMetadataResponseDTO>, next: NextFunction): Promise<void> {
       try {
         //Obtener los paramerto de la query string (query params) y los asignamos a un objeto
         //Esto es para poder filtrar los productos por categoria y por nombre:
@@ -56,35 +50,40 @@ class ProductController {
         //Luego el servicio se encargara de transformar el DTO en un objeto de tipo ProductFilters (del dominio)
         //Le pasamos los parametros de la query string (query params) para filtrar los productos
         const productFiltersDTO: ProductFiltersDTO = {
-            sku: sku,
-            category_code: category_code,
+            sku: sku?.toString(), //Si sku no existe, se convierte a undefined
+            category_code: category_code?.toString(),
         };
 
-        const totalCount = await this.productService.count(productFiltersDTO);
-        const paginationMetadata = new PaginationMetadata(Number(page), Number(limit), totalCount, 50);
+        const totalCount: number = await this.productService.count(productFiltersDTO);
+        const paginationMetadata: PaginationMetadata = new PaginationMetadata(Number(page), Number(limit), totalCount, 50);
         const paginationsParams: PaginationsParams = {offset: paginationMetadata.offset, limit: paginationMetadata.limit};
 
-        const products = await this.productService.getAllProducts(productFiltersDTO, paginationsParams);
+        const products: Product[] = await this.productService.getAllProducts(productFiltersDTO, paginationsParams);
         paginationMetadata.count = products.length;
         const paginationMetadataResponseDTO: PaginationMetadataResponseDTO = toPaginationMetadataResponseDTO(paginationMetadata);
-        const productResponse = products.map(product => new ProductResponseDTO(product));
+        const productResponse: ProductResponseDTO[] = products.map(productToResponseDTO)
 
         //res.success es un metodo que se define en el middleware (en shared/infrastructure/middleware/response-handlers.js)
         //este res.succes permite tener una formato estandarizado para las respuestas de la API (osea que tenga data, message, status, etc)
         res.success({data: productResponse, message: 'success', meta: paginationMetadataResponseDTO});
       } catch (error) {
-        //Aqui se hace next para que vaya al handler de errores y se maneje el error
-        //Se envia un httpError.InternalServerError, esto ya tiene definido el status code y se le envia el mensaje.
-        return next(httpError.InternalServerError(error.message));
-      }
-    } 
+        //Si el error es de tipo Error, se envia el mensaje de error, si no, se convierte a string
+        const msg = error instanceof Error
+                    ? error.message
+                    : String(error);
 
-    async getBySku(req, res, next) {
+        //Aqui se hace next para     que vaya al handler de errores y se maneje el error
+        //Se envia un httpError.InternalServerError, esto ya tiene definido el status code y se le envia el mensaje.
+        return next(httpError.InternalServerError(msg));
+        }
+    }
+
+    async getBySku(req: Request, res: CustomResponse<ProductResponseDTO[], PaginationMetadataResponseDTO>, next: NextFunction): Promise<void>  {
         try {
             //Esto es lo mismo que decir const sku = req.params.sku
             const { sku } = req.params;
-            const product = await this.productService.getProductBySku(sku);
-            const productResponse = product.map(product => new ProductResponseDTO(product));
+            const products: Product[] = await this.productService.getProductBySku(sku);
+            const productResponse = products.map(productToResponseDTO);
             res.success({data: productResponse});
         } catch (error) {
             //El erro.status puede deifnirse incluso en la capa repositorio, pero debe hacerse n esta capa porque controller es la encargada de definir
@@ -92,18 +91,16 @@ class ProductController {
             if(error instanceof ProductoNotFoundError){
                 return next(httpError.NotFoundError(error.message));
             }
-            return next(httpError.InternalServerError(error.message))
+            const msg = error instanceof Error
+                    ? error.message
+                    : String(error);
+            return next(httpError.InternalServerError(msg))
         }
     }
 
-    /**JSdoc para definir los tipos de los parametros de la funcion:
-     @param {import("express").Request} req - The request object
-     @param {import("express").Response & {success}} res - The response object
-     @param {import("express").NextFunction} next - The next function
-    */
-    async createProduct(req, res, next) {
+    async createProduct(req: Request, res: CustomResponse<ProductResponseDTO[], PaginationMetadataResponseDTO>, next: NextFunction): Promise<void> {
         try {
-            
+
             const requestBody = req.body;
             //Si el req.body no es un array, da error con un if
             if (!Array.isArray(requestBody)) {
@@ -118,18 +115,19 @@ class ProductController {
             }
             const productsDTOArray: CreateProductRequestDTO[] = requestBody.map(rb => jsonToCreateProductRequestDTO(rb));
             //Version corta: const productsDTOArray = requestBody.map(jsonToCreateProductRequestDTO);
-            const result = await this.productService.createProduct(productsDTOArray);
-            const productResponse = result.map(product => new ProductResponseDTO(product));
+            const products = await this.productService.createProduct(productsDTOArray);
+            const productResponse = products.map(productToResponseDTO);
             res.status(201).success({data: productResponse});
         } catch (error) {
             if(error instanceof ProductWithSKUAlreadyExistsError){
                 return next(httpError.BadRequestError(error.message));
             }
-            return next(httpError.InternalServerError(error.message));
+            const msg = error instanceof Error ? error.message: String(error);
+            return next(httpError.InternalServerError(msg));
         }
     }
 
-    async updateFullProduct(req, res, next) {
+    async updateFullProduct(req: Request, res: CustomResponse<ProductResponseDTO[], PaginationMetadataResponseDTO>, next: NextFunction): Promise<void> {
         try {
             const requestBody = req.body;
             //Si el req.body no es un array, da error con un if
@@ -144,19 +142,21 @@ class ProductController {
                 }
             }
             const productsDTOArray: UpdateFullProductRequestDTO[] = requestBody.map(jsonToUpdateFullProductRequestDTO);
-            const result = await this.productService.updateFullProduct(productsDTOArray);
-            const productResponse = result.map(product => new ProductResponseDTO(product));
+            const products = await this.productService.updateFullProduct(productsDTOArray);
+            const productResponse = products.map(productToResponseDTO);
             
             res.status(201).success({data:productResponse});
         } catch (error) {
             if(error instanceof ProductoNotFoundError){
                 return next(httpError.NotFoundError(error.message));
             }
-            return next(httpError.InternalServerError(error.message));
+            const msg = error instanceof Error ? error.message: String(error);
+
+            return next(httpError.InternalServerError(msg));
         }
     }
 
-    async updateProduct(req, res, next) {
+    async updateProduct(req: Request, res: CustomResponse<ProductResponseDTO[], PaginationMetadataResponseDTO>, next: NextFunction): Promise<void> {
         try {
             const requestBody = req.body;
             //Si el req.body no es un array, da error con un if
@@ -171,19 +171,20 @@ class ProductController {
                 }
             }
             const productsDTOArray: UpdatePartialProductRequestDTO[] = requestBody.map(jsonToUpdatePartialProductRequestDTO);
-            const result = await this.productService.updateProduct(productsDTOArray);
-            const productResponse = result.map(product => new ProductResponseDTO(product));
+            const products = await this.productService.updateProduct(productsDTOArray);
+            const productResponse = products.map(productToResponseDTO);
 
             res.status(200).success({data: productResponse});
         } catch (error) {
             if(error instanceof ProductoNotFoundError){
                 return next(httpError.NotFoundError(error.message));
             }
-            return next(httpError.InternalServerError(error.message));
+            const msg = error instanceof Error ? error.message: String(error);
+            return next(httpError.InternalServerError(msg));
         }
     }
 
-    async deleteProduct(req, res, next) {
+    async deleteProduct(req: Request, res: CustomResponse<ProductResponseDTO[], PaginationMetadataResponseDTO>, next: NextFunction): Promise<void> {
         try {
             const requestBody = req.body;
             //Si el req.body no es un array, da error con un if
@@ -198,17 +199,18 @@ class ProductController {
                 }
             }
             const productsDTOArray: DeleteProductRequestDTO[] = requestBody.map(jsonToDeleteProductRequestDTO);
-            const result = await this.productService.deleteProduct(productsDTOArray);
-            const productResponse = result.map(product => new ProductResponseDTO(product));
+            const products = await this.productService.deleteProduct(productsDTOArray);
+            const productResponse = products.map(productToResponseDTO);
             res.status(200).success({data: productResponse});
         } catch (error) {
             if(error instanceof ProductoNotFoundError){
                 return next(httpError.NotFoundError(error.message));
             }
-            return next(httpError.InternalServerError(error.message));
+            const msg = error instanceof Error ? error.message: String(error);
+            return next(httpError.InternalServerError(msg));
         }
     }
 
   }
   
-  module.exports = ProductController;
+export default ProductController;

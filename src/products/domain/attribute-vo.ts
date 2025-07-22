@@ -6,27 +6,27 @@
 import { validateField } from '../../shared/domain/utils/generic-functions';
 
 interface IAttribute {
-    name_code: string;
+    nameCode: string;
     name?: string;
-    value_code: string;
+    valueCode: string;
     value?: string;
 }
 
 
 class Attribute implements IAttribute {
-    name_code: string;
+    nameCode: string;
     name?: string;
-    value_code: string;
+    valueCode: string;
     value?: string;
     constructor(params: IAttribute) {
-            validateField(params.name_code, "name_code", "string", true);
+            validateField(params.nameCode, "nameCode", "string", true);
             validateField(params.name, "Name", "string", false);
-            validateField(params.value_code, "value_code", "string", true);
+            validateField(params.valueCode, "valueCode", "string", true);
             validateField(params.value, "Value", "string", false);
 
-            this.name_code    = params.name_code;
+            this.nameCode    = params.nameCode;
             this.name         = params.name;
-            this.value_code   = params.value_code;
+            this.valueCode   = params.valueCode;
             this.value        = params.value;
         }
 }

@@ -1,6 +1,7 @@
 //@ts-check
 import pool from '../../shared/infrastructure/config/database';
 import Product from '../domain/product-entity';
+import ProductAttribute from '../domain/attribute-vo';
 import Attribute from '../domain/attribute-vo';
 import ProductRepository from '../domain/product-repository';
 import { ProductoNotFoundError, ProductWithSKUAlreadyExistsError } from '../domain/product-errors';
@@ -8,7 +9,7 @@ import ProductFilters from '../domain/product-filters';
 import {ProductPostgreDTO} from './product-postgre-dto';
 import { productToPostgreDTO, rowToProduct } from './product-postgre-mapper';
 import PaginationParams from '../../shared/domain/paginations-params-vo';
-import { QueryResult } from 'pg';
+import { QueryResult, DatabaseError } from 'pg';
 
 //Aqui la clase PostgreProductRepository implementa la interfaz ProductRepository
 //Esto sería tecnicametne lo que se conoce como un "adaptador" de salida en la arquitectura hexagonal 
@@ -98,7 +99,7 @@ class PostgreProductRepository implements ProductRepository {
         return rows.map(rowToProduct)
     }
 
-    async count(productFilters) {
+    async count(productFilters: ProductFilters): Promise<number> {
         
         //Wherfilter devueelve la clause y los params para la consulta SQL
         const whereFilter = this._generateWhereFilters(productFilters, "p.");
@@ -109,7 +110,7 @@ class PostgreProductRepository implements ProductRepository {
             whereFilter.params
         );
 
-        const count = parseInt(result.rows[0].count);
+        const count: number = parseInt(result.rows[0].count);
     
         if (isNaN(count)) {
             //TODO: Crear un error especifico para esto
@@ -119,7 +120,7 @@ class PostgreProductRepository implements ProductRepository {
         return count;
     }
 
-    async getProductBySku(sku) {
+    async getProductBySku(sku: string): Promise<Product[]> {
         const result = await pool.query(
             `${PostgreProductRepository.SQL_SELECT_BASE}
             WHERE p.sku = $1
@@ -134,15 +135,13 @@ class PostgreProductRepository implements ProductRepository {
             return rows.map(rowToProduct);
     }
 
-    async createProduct(products : Product[]) {
+    async createProduct(products : Product[]): Promise<Product[]> {
         //Aqui para hacer el insert, como queremos insertar en 2 tablas (products y products_attributes)
         //En vez de usar pool.query 2 veces, lo que hacemos es usar una transaccion
         //Esto usando el metodo pool.query y pasandole un array de queries
         //El primer query es el insert en la tabla products y el segundo es el insert en la tabla products_attributes
     
-
         const productsDTO : ProductPostgreDTO[] = products.map(productToPostgreDTO);
-        console.log(productsDTO)
 
         //pool.connect() es un metodo que nos permite conectarnos a la base de datos y obtener un cliente
         const client = await pool.connect();
@@ -151,7 +150,7 @@ class PostgreProductRepository implements ProductRepository {
             await client.query('BEGIN');
             //Haremos un for para recorrer el array de productos y por cada producto haremos un insert en la tabla products
             //Y por cada producto haremos un insert en la tabla products_attributes
-            const createdProducts = [];
+            const createdProducts: any[] = [];
             for (const product of productsDTO) {
                 try{
                     //Hacemos el primer insert en la tabla products
@@ -164,7 +163,7 @@ class PostgreProductRepository implements ProductRepository {
                     createdProducts.push(resultProd.rows[0]);
 
                     //Hacemos el segundo insert en la tabla products_attributes
-                    const createdAttributes = [];
+                    const createdAttributes: any[] = [];
                     for (const atributo of product.attributes || []) {
                         const resultAttr = await client.query(
                         `INSERT INTO products_attributes (sku, name_code, value_code)
@@ -180,12 +179,18 @@ class PostgreProductRepository implements ProductRepository {
                     //Como no tenemos el indice del producto creado, lo que hacemos es usar el length del array de productos creados - 1
                     //Ya que asi seguramos que agregamos los atributos al producto que acabamos de crear
                     createdProducts[createdProducts.length - 1].attributes = createdAttributes;
-                } catch (error) {
-                    //Si el error code es 23505, singidica que el primary key ya existe (sku)
-                    if(error.code === '23505') {
-                        throw new ProductWithSKUAlreadyExistsError(product.sku);
+                } catch (error: unknown) {
+                    //Si el error es de tipo DatabaseError, significa que hubo un error en la base de datos
+                    if (error instanceof DatabaseError) {
+                        if (error.code === '23505') {
+                            throw new ProductWithSKUAlreadyExistsError(product.sku);
+                        }
+                        throw new Error(`Error al crear el producto con sku ${product.sku}: ${error.message}`);
                     }
-                    throw new Error(`Error al crear el producto con sku ${product.sku}: ${error.message}`);
+                    if (error instanceof Error) {
+                        throw new Error(`Error al crear el producto con sku ${product.sku}: ${error.message}`)
+                    }
+                    throw error;
                 }
             }
 
@@ -204,7 +209,7 @@ class PostgreProductRepository implements ProductRepository {
 
     }
 
-    async updateFullProduct(products : Product[]) {
+    async updateFullProduct(products: Product[]): Promise<Product[]> {
         const productsDTO = products.map(productToPostgreDTO);
 
         const client = await pool.connect();
@@ -252,7 +257,10 @@ class PostgreProductRepository implements ProductRepository {
                     if(error instanceof ProductoNotFoundError) {
                         throw error;
                     }
-                    throw new Error(`Error al actualizar el producto con sku ${product.sku}: ${error.message}`);
+                    if(error instanceof Error) {
+                        throw new Error(`Error al actualizar el producto con sku ${product.sku}: ${error.message}`);
+                    }
+                    throw error;
                 }
             }
 
@@ -271,7 +279,7 @@ class PostgreProductRepository implements ProductRepository {
 
     }
 
-    async updateProduct(products: Product[]) {
+    async updateProduct(products: Product[]): Promise<Product[]> {
         const productsDTO = products.map(productToPostgreDTO);
         const client = await pool.connect();
         try {
@@ -289,17 +297,18 @@ class PostgreProductRepository implements ProductRepository {
                     let index = 1;
                     //Recorremos el objeto product y por cada propiedad que no sea sku, creamos un setClause y lo agregamos al array de setClauses
                     //Ademas agregamos el valor al array de values
-                    for (const key in product) {
+                    for (const [key, val] of Object.entries(product)) {
                         //Ignoramos las propiedades sku y attributes (sku porque es la clave primaria y attributes porque es una tabla aparte)
                         if (key !== 'sku' && key !== 'attributes') {
                             //Si el valor es undefined (o null [por eso !=]), lo ignoramos
-                            if (product[key] != undefined) {
+                            if (val != undefined) {
                                 setClauses.push(`${key} = $${index}`);
-                                values.push(product[key]);
+                                values.push(val);
                                 index++;
                             }
                         }
                     }
+
                     //Agregamos el where al query, en el where se ponde el index, que sera el ultimo valor que agregamos al array de values y corresponde al sku
                     query += setClauses.join(', ') + ` WHERE sku = $${index} RETURNING *;`;        
                     //Agregamos el sku al array de values al final, ya que es el ultimo valor que vamos a usar en el where
@@ -333,7 +342,10 @@ class PostgreProductRepository implements ProductRepository {
                     if(error instanceof ProductoNotFoundError) {
                         throw error;
                     }
-                    throw new Error(`Error al actualizar el producto con sku ${product.sku}: ${error.message}`);
+                    if(error instanceof Error) {
+                        throw new Error(`Error al actualizar el producto con sku ${product.sku}: ${error.message}`);
+                    }
+                    throw error;
                 }
             }
 
@@ -343,7 +355,7 @@ class PostgreProductRepository implements ProductRepository {
             //AL updatedProducts lo ponemos entre [] para que sea un array de un solo elemento y asi poder mapearlo a objeto Product
             return updatedProducts.map(rowToProduct)
 
-        } catch (error) {
+        } catch (error: unknown) {
             await client.query('ROLLBACK'); // Si hay un error, hacemos rollback de la transaccion
         
             throw error; // Lanza el error para que lo maneje el controlador
@@ -353,7 +365,7 @@ class PostgreProductRepository implements ProductRepository {
     }
     
 
-    async deleteProduct(products: Product[]) {
+    async deleteProduct(products: Product[]): Promise<Product[]> {
         const productsDTO = products.map(productToPostgreDTO);
 
         const client = await pool.connect();
@@ -376,7 +388,10 @@ class PostgreProductRepository implements ProductRepository {
                     if(error instanceof ProductoNotFoundError) {
                         throw error;
                     }
-                    throw new Error(`Error al eliminar el producto con sku ${product.sku}: ${error.message}`);
+                    if(error instanceof Error) {
+                        throw new Error(`Error al eliminar el producto con sku ${product.sku}: ${error.message}`);
+                    }
+                    throw error;
                 }
             }
             await client.query('COMMIT');
@@ -425,4 +440,4 @@ class PostgreProductRepository implements ProductRepository {
 
 }
 
-module.exports = PostgreProductRepository;
+export default PostgreProductRepository;
