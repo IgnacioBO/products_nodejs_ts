@@ -1,8 +1,8 @@
 //@ts-check
-const Offer = require('../domain/offer-entity.js');
-const Price = require('../domain/price-vo.js');
-const OfferFilters = require('../domain/offer-filters');
-const OfferRepository = require('../domain/offer-repository.js');
+const Offer = require('../domain/offer-entity').default;
+const Price = require('../domain/price-vo').default;
+import OfferFilters from '../domain/offer-filters';
+const OfferRepository = require('../domain/offer-repository').default;
 //const OfferFiltersDTO = require('../application/offer-filters-dto.js');
 const PaginationsParams = require('../../shared/domain/paginations-params-vo');
 const ProductService = require('../../products/application/product-service').default;
@@ -42,7 +42,7 @@ class OfferService {
         if(skusNotFound.length > 0){
             throw new ProductoNotFoundError(skusNotFound.join(', '));
         }
-        const offersObjectArray = offers.map(p => this._jsonArrayToCreateOffer(p));    
+        const offersObjectArray = offers.map(p => this._jsonArrayToCreateOffer(p));
         const result = await this.offerRepository.createOffer(offersObjectArray);
         return result;
     }
@@ -102,19 +102,19 @@ class OfferService {
     //Transformamos el DTO a un objeto de tipo OfferFilters
     //Aqui a futuro en vez de transformar el DTO a un objeto de tipo OfferFilters directamente
     //podriamos usar un mapper que se encargue de transformar el DTO a un objeto de tipo OfferFilters
-    const offerFilters = new OfferFilters({
+    const offerFilters: OfferFilters = {
       sku: offerFiltersDTO.sku,
       offer_id: offerFiltersDTO.offer_id,
-    });
+    };
     const ofertas = await this.offerRepository.getAllOffers(offerFilters, paginationsParams);
     return ofertas;
   }
 
   async count (offerFiltersDTO){
-    const offerFilters = new OfferFilters({
+    const offerFilters: OfferFilters ={
         sku: offerFiltersDTO.sku,
-         offer_id: offerFiltersDTO.offer_id,
-    });
+        offer_id: offerFiltersDTO.offer_id,
+    };
     const count = await this.offerRepository.count(offerFilters);
     return count;
   }

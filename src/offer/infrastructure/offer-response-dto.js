@@ -1,4 +1,4 @@
-const Offer = require('../domain/offer-entity.js');
+const Offer = require('../domain/offer-entity').default;
 
 module.exports = class OfferResponseDTO {
      /**

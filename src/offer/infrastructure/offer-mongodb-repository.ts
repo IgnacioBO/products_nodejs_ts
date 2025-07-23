@@ -1,13 +1,13 @@
 //@ts-check
 import { getDb } from '../../shared/infrastructure/config/database-mongodb';
-const Offer = require('../domain/offer-entity.js');
-const Price = require('../domain/price-vo.js');
-const OfferRepository = require('../domain/offer-repository.js');
-const OfferFilters = require('../domain/offer-filters.js');
+const Offer = require('../domain/offer-entity').default;
+const Price = require('../domain/price-vo').default;
+const OfferRepository = require('../domain/offer-repository').default;
+const OfferFilters = require('../domain/offer-filters').default;
 const PaginationsParams = require('../../shared/domain/paginations-params-vo');
-const {OfferNotFoundError} = require('../domain/offer-errors.js');
+const {OfferNotFoundError} = require('../domain/offer-errors');
 
-class OfferMongoDBRepository extends OfferRepository {
+class OfferMongoDBRepository implements OfferRepository {
 
     /**
      * @param {Offer[]} offers 

@@ -8,8 +8,8 @@ import type PaginationMetadataResponseDTO from "../../shared/application/paginat
 import { toPaginationMetadataResponseDTO } from "../../shared/application/pagination-metadata-mapper";
 const OfferResponseDTO = require("./offer-response-dto.js");
 const OfferFiltersDTO = require("../application/offer-filters-dto.js");
-const { OfferNotFoundError } = require("../domain/offer-errors.js");
-const Offer = require("../domain/offer-entity.js");
+const { OfferNotFoundError } = require("../domain/offer-errors");
+const Offer = require("../domain/offer-entity");
 
 class OfferController {
     constructor(offerService) {
