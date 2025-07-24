@@ -1,13 +1,13 @@
 import { validateField } from "../../shared/domain/utils/generic-functions";
 
-enum CurrencyType {
+export enum CurrencyType {
   CLP = 'CLP',
   PE  = 'PE',
   USD = 'USD',
   EUR = 'EUR',
 }
 
-enum PriceType {
+export enum PriceType {
   ORIGINAL  = 'ORIGINAL',
   DISCOUNT  = 'DISCOUNT',
   PROMOTION = 'PROMOTION',
@@ -20,7 +20,7 @@ interface IPrice{
 }
 
 
-class Price implements IPrice {
+export class Price implements IPrice {
     currency: CurrencyType;
     type: PriceType;
     value: number;

@@ -19,9 +19,9 @@ class Attribute implements IAttribute {
     valueCode: string;
     value?: string;
     constructor(params: IAttribute) {
-            validateField(params.nameCode, "nameCode", "string", true);
+            validateField(params.nameCode, "Name code", "string", true);
             validateField(params.name, "Name", "string", false);
-            validateField(params.valueCode, "valueCode", "string", true);
+            validateField(params.valueCode, "Value code", "string", true);
             validateField(params.value, "Value", "string", false);
 
             this.nameCode    = params.nameCode;

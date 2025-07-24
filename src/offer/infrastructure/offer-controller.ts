@@ -1,18 +1,25 @@
 //@ts-check
 //const { ProductoNotFoundError, ProductWithSKUAlreadyExistsError } = require("../domain/product-errors"); //Para poder identificar el tipo de error (instance of) que viene desde las capas dominio y poder manejarlo en el controller
 const httpError = require("../../shared/infrastructure/errors/http-errors"); //Para poder enviar al cliente error con status code y mensaje de error
+import { NextFunction } from "express";
 //const ProductFiltersDTO = require('../application/product-filters-dto.js');
 import PaginationMetadata from "../../shared/application/pagination-metadata";
 const PaginationsParams = require("../../shared/domain/paginations-params-vo");
 import type PaginationMetadataResponseDTO from "../../shared/application/pagination-metadata-dto";
 import { toPaginationMetadataResponseDTO } from "../../shared/application/pagination-metadata-mapper";
+import { CustomResponse } from "../../shared/infrastructure/middlewares/response-handlers";
+import OfferFiltersDTO from "../application/offer-filters-dto";
+import { CreateOfferRequestDTO, DeleteOfferRequestDTO, UpdateFullOfferRequestDTO, UpdatePartialOfferRequestDTO } from "../application/offer-request-dto";
+import { jsonToCreateOfferRequestDTO, jsonToDeleteOfferRequestDTO, jsonToUpdateFullOfferRequestDTO, jsonToUpdatePartialOfferRequestDTO } from "../application/offer-request-mapper";
 const OfferResponseDTO = require("./offer-response-dto.js");
-const OfferFiltersDTO = require("../application/offer-filters-dto.js");
 const { OfferNotFoundError } = require("../domain/offer-errors");
 const Offer = require("../domain/offer-entity");
+import type OfferService from "../application/offer-service";
+import { json } from "stream/consumers";
 
 class OfferController {
-    constructor(offerService) {
+    offerService: OfferService;
+    constructor(offerService: OfferService) {
       this.offerService = offerService;
       //Se hace bind para que this dentro de la funcion createOffer se refiera a la instancia de la clase OfferController
       //Asi podemos usar this.productService dentro de la funcion createOffer
@@ -56,7 +63,8 @@ class OfferController {
                     
                 }
             }
-            const result = await this.offerService.createOffer(requestBody);
+            const requestDTO = requestBody.map(jsonToCreateOfferRequestDTO)
+            const result = await this.offerService.createOffer(requestDTO);
             const offerRespone = result.map(offer => new OfferResponseDTO(offer));
             res.status(201).success({data: offerRespone});
         } catch (error) {
@@ -64,7 +72,7 @@ class OfferController {
         }
     }
 
-    async updateFullOffer(req, res, next) {
+    async updateFullOffer(req: Request, res: CustomResponse<any[], PaginationMetadataResponseDTO>, next: NextFunction) {
         try {
             const requestBody = req.body;
             //Si el req.body no es un array, da error con un if
@@ -78,7 +86,8 @@ class OfferController {
                     return next(httpError.BadRequestError(`El offer en la posicion ${i} no tiene todos los campos obligatorios: sku e is_published`));
                 }
             }
-            const result = await this.offerService.updateFullOffer(requestBody);
+            const requestDTO: UpdateFullOfferRequestDTO[] = requestBody.map(jsonToUpdateFullOfferRequestDTO);
+            const result = await this.offerService.updateFullOffer(requestDTO);
             const offerResponse = result.map(offer => new OfferResponseDTO(offer));
 
             res.status(201).success({data:offerResponse});
@@ -90,7 +99,7 @@ class OfferController {
         }
     }
 
-    async updateOffer(req, res, next) {
+    async updateOffer(req: Request, res: CustomResponse<any[], PaginationMetadataResponseDTO>, next: NextFunction) {
         try {
             const requestBody = req.body;
             if (!Array.isArray(requestBody)) {
@@ -103,7 +112,8 @@ class OfferController {
                     return next(httpError.BadRequestError(`El offer en la posicion ${i} no tiene todos los campos obligatorios: sku`));
                 }
             }
-            const result = await this.offerService.updateOffer(requestBody);
+            const requestDTO: UpdatePartialOfferRequestDTO[] = requestBody.map(jsonToUpdatePartialOfferRequestDTO)
+            const result = await this.offerService.updateOffer(requestDTO);
             const offerResponse = result.map(offer => new OfferResponseDTO(offer));
 
             res.status(201).success({data:offerResponse});
@@ -131,7 +141,8 @@ class OfferController {
                 }
                 arrayDeSkus.push({sku : offer.sku});
             }
-            const result = await this.offerService.deleteOffer(arrayDeSkus);
+            const requestDTO: DeleteOfferRequestDTO[] = requestBody.map(jsonToDeleteOfferRequestDTO)
+            const result = await this.offerService.deleteOffer(requestDTO);
             //const offerResponse = result.map(product => new OfferResponseDTO(product));
             res.status(200).success({message: result});
         } catch (error) {
@@ -154,10 +165,10 @@ class OfferController {
 
         const { sku, offer_id, page = 0, limit = 0 } = req.query;
 
-        const offerFiltersDTO = new OfferFiltersDTO({
+        const offerFiltersDTO: OfferFiltersDTO = {
             sku: sku,
             offer_id: offer_id,
-        });
+        };
 
         const totalCount = await this.offerService.count(offerFiltersDTO);
         const paginationMetadata = new PaginationMetadata(Number(page), Number(limit), totalCount, 50);

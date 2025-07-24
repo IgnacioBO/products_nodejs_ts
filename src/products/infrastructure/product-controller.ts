@@ -102,7 +102,7 @@ class ProductController {
         try {
 
             const requestBody = req.body;
-            //Si el req.body no es un array, da error con un if
+             //Si el req.body no es un array, da error con un if
             if (!Array.isArray(requestBody)) {
                 return next(httpError.BadRequestError('El body debe ser un array de productos'));
             }

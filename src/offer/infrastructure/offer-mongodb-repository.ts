@@ -2,7 +2,7 @@
 import { getDb } from '../../shared/infrastructure/config/database-mongodb';
 const Offer = require('../domain/offer-entity').default;
 const Price = require('../domain/price-vo').default;
-const OfferRepository = require('../domain/offer-repository').default;
+import OfferRepository from '../domain/offer-repository';
 const OfferFilters = require('../domain/offer-filters').default;
 const PaginationsParams = require('../../shared/domain/paginations-params-vo');
 const {OfferNotFoundError} = require('../domain/offer-errors');
@@ -83,7 +83,10 @@ class OfferMongoDBRepository implements OfferRepository {
      * @param {string} sku 
      * @returns {Promise<Offer[]>}
      */
-    getOfferBySku(sku) { throw new Error('Not implemented'); }
+    getOfferBySku(sku) { 
+        throw new Error('Not implemented'); 
+        return new Offer({});
+    }
 
     /**
      * @param {Offer[]} offers
