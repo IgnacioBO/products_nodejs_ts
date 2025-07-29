@@ -1,118 +1,111 @@
-//@ts-check
 import { getDb } from '../../shared/infrastructure/config/database-mongodb';
-const Offer = require('../domain/offer-entity').default;
-const Price = require('../domain/price-vo').default;
+import Offer from '../domain/offer-entity';
+import Price from '../domain/price-vo';
 import OfferRepository from '../domain/offer-repository';
-const OfferFilters = require('../domain/offer-filters').default;
-const PaginationsParams = require('../../shared/domain/paginations-params-vo');
-const {OfferNotFoundError} = require('../domain/offer-errors');
+import OfferFilters from '../domain/offer-filters';
+import PaginationsParams from '../../shared/domain/paginations-params-vo';
+import {OfferNotFoundError, OfferAlreadyExists} from '../domain/offer-errors';
+import { InsertManyResult, MongoBulkWriteError, W, WithId } from 'mongodb';
+import { mongoOfferDTOtoEntity, offerToMongoDTO, documentToOffer } from './offer-mongodb-mapper';
+import { OfferMongoDTO } from './offer-mongodb-dto';
 
 class OfferMongoDBRepository implements OfferRepository {
 
-    /**
-     * @param {Offer[]} offers 
-     * @returns {Promise<Offer[]>}
-     */
-    async createOffer(offers) { 
-
+    async createOffer(offers: Offer[]): Promise<Offer[]> {
+        let offersCreated: Offer[] = [];
         try{
-            var query = []
-
-            for (const offer of offers) {
-                var queryIndividual = { offer_id: await this._getNextSequenceValue(), sku: offer.sku, is_published: offer.isPublished};            
-                var queryPrices = [];
-                if (Array.isArray(offer.prices)) {
-                    for (const price of offer.prices){
-                        queryPrices.push({currency: price.currency, type: price.type, value: price.value});
-                    }
-                    queryIndividual.prices = queryPrices;
-                }
-                offer.offerId = queryIndividual.offer_id; //Asignamos el offer_id al objeto offer para que se devuelva en la respuesta
-                query.push(queryIndividual)       
+            let offersDTO = offers.map(offerToMongoDTO)
+            //Le asignamos un offer_id a cada oferta antes de insertarlas en la base de datos
+            for (const offer of offersDTO) {
+                const offerId: string = await this._getNextSequenceValue(); //Obtenemos el siguiente valor de la secuencia para el campo offer_id
+                offer.offer_id = offerId; //Asignamos el offer_id al objeto offer para que se devuelva en la respuesta
             }
-            const res = await getDb().collection('offers').insertMany(query, { ordered: false });
+            const res: InsertManyResult = await getDb().collection('offers').insertMany(offersDTO, { ordered: false });
             if (res.insertedCount === offers.length) {
                 console.log(`Se crearon ${res.insertedCount} offers de manera exitosa`);
                 console.log('Offers creadas:', res.insertedIds);
             }else {
                 throw new Error(`Se esperaban ${offers.length} pero se crearon ${res.insertedCount}`)     
             }
+            offersCreated = offersDTO.map(mongoOfferDTOtoEntity);
         }
         catch (error) {
-            if(error.code == '11000') {
-                let listado = [];
-                for (const writeError of error.writeErrors) {
-                    if (writeError.err.errmsg.includes('offer_id')){
-                        listado.push({offer_id: writeError.err.op.offer_id});
+            if(error instanceof MongoBulkWriteError){
+                if(error.code == '11000') {
+                    let listadoSKUs: string [] = [];
+                    let listadoOfferIds: string []= [];
+                    //.writeErros puede venir como un array o un objeto, por lo que verificamos si es un array
+                    //Si es un array, recorremos cada error, si es un objeto, lo convertimos en un array
+                    const writeErrors = Array.isArray(error.writeErrors) ? error.writeErrors : [error.writeErrors];
+                    for (const writeError of writeErrors) {
+                        if (writeError.err.errmsg.includes('offer_id')){
+                            listadoOfferIds.push(writeError.err.op.offer_id);
+                        }
+                        if (writeError.err.errmsg.includes('sku')){
+                            listadoSKUs.push(writeError.err.op.sku);
+                        }
                     }
-                    if (writeError.err.errmsg.includes('sku')){
-                        listado.push({sku: writeError.err.op.sku});
-                    }
+                    throw new OfferAlreadyExists("", listadoSKUs, listadoOfferIds); //Lanza un error si ya existen los SKUs o offer_id
                 }
-                let errorNew = new Error(`Error al crear offers, sku y/o offer_id ya existen para estos registros:${(listado)}`);
-                //@ts-ignore
-                errorNew.message = {message:"Error al crear offers, sku y/o offer_id ya existen para estos registros", already_exists: listado};
-                console.log(errorNew.message);
-                throw errorNew;
             }
             console.error('Error al crear offers:', error);
-            throw new Error(`Error al crear offers: ${error.message}`);     
+            if( error instanceof Error ){
+                throw new Error(`Error al crear offers: ${error.message}`);     
+            }
+            throw error;
         }
-        return offers;
+        return offersCreated;
      }  
 
-    /**
-     * @param {OfferFilters} offerFilters
-     * @param {PaginationsParams} paginationParams
-     * @returns {Promise<Offer[]>}
-     */
-    async getAllOffers(offerFilters, paginationParams){
-        let offers = []; 
+
+    async getAllOffers(offerFilters: OfferFilters, paginationParams: PaginationsParams): Promise<Offer[]> {
+        let offers: WithId<OfferMongoDTO>[] = []; 
          try{
             this._cleanFindQuery(offerFilters); //Limpia los filtros de busqueda de mongodb y elimina campos vacios o no definidos
-            offers = await getDb().collection('offers').find(offerFilters).limit(paginationParams.limit).skip(paginationParams.offset).toArray();
+            //Le agregamos <OfferMongoDTO> para que el compilador sepa que estamos trabajando con documentos de tipo OfferMongoDTO
+            offers = await getDb().collection<OfferMongoDTO>('offers').find(offerFilters).limit(paginationParams.limit).skip(paginationParams.offset).toArray();
         }
         catch (error) {
             console.error('Error al buscar las ofertas:', error);
-            throw new Error(`Error al buscar las ofertas: ${error.message}`);     
+            if (error instanceof Error){
+                throw new Error(`Error al buscar las ofertas: ${error.message}`);     
+            }
+            throw new Error(`Error al buscar las ofertas: ${error}`);     
         }
-        return offers.map(offer => this._mapDocumentToOffer(offer)); //Mapea los documentos a objetos Offer
+        return offers.map(documentToOffer); //Mapea los documentos a objetos Offer
     }
 
-    /**
-     * @param {string} sku 
-     * @returns {Promise<Offer[]>}
-     */
-    getOfferBySku(sku) { 
+    getOfferBySku(sku: string): Promise<Offer[]> { 
         throw new Error('Not implemented'); 
-        return new Offer({});
+        //return new Offer({sku: "o"});
     }
 
-    /**
-     * @param {Offer[]} offers
-     * @returns {Promise<Offer[]>}
-     */ 
-    async updateFullOffer(offers) { 
+    async updateFullOffer(offers: Offer[]): Promise<Offer[]> { 
+        let offersUpdated: Offer[] = [];
         try{
+            let offersDTO = offers.map(offerToMongoDTO)
             var query = []
 
-            for (const offer of offers) {
-                var queryIndividual = { updateOne: { filter: { sku: offer.sku }, 
-                                        update: { $set :{ is_published: offer.isPublished,}}, 
-                                        upsert: false }};
+            for (const offer of offersDTO) {
                 var queryPrices = [];
+                var hasPrices = Array.isArray(offer.prices);
                 if (Array.isArray(offer.prices)) {
-                    for (const price of offer.prices){
-                        queryPrices.push({currency: price.currency, type: price.type, value: price.value});
+                    for (const price of offer.prices) {
+                        queryPrices.push({ currency: price.currency, type: price.type, value: price.value });
                     }
-                    queryIndividual.updateOne.update.$set.prices = queryPrices;
-                } else {
-                    queryIndividual.updateOne.update.$unset = { prices: "" }; //Si no hay precios, los eliminamos
                 }
+                let doc = hasPrices ? { $set: { is_published: offer.is_published, prices: queryPrices } } :
+                { $set: { is_published: offer.is_published}, $unset: { prices: "" } };
+
+                var queryIndividual = { updateOne: { filter: { sku: offer.sku }, 
+                                        update: doc, 
+                                        upsert: false }};
+
                 query.push(queryIndividual)       
             }
             const res = await getDb().collection('offers').bulkWrite(query, { ordered: false });
-            
+            offersUpdated = offersDTO.map(mongoOfferDTOtoEntity);
+
             if (res.matchedCount === offers.length) {
                 console.log(`Se actualizaron ${res.matchedCount} offers de manera exitosa`);
             }else {
@@ -129,33 +122,38 @@ class OfferMongoDBRepository implements OfferRepository {
             }
         }
         catch (error) {
-            if(error.code == '11000') {
-                console.log(error); 
-                let listado = [];
-                for (const writeError of error.writeErrors) {
-                    if (writeError.err.errmsg.includes('offer_id')){
-                        listado.push(` {offer_id: ${writeError.err.op.offer_id} - sku: ${writeError.err.op.sku} - campo: offer_id}`);
+            if(error instanceof MongoBulkWriteError){
+                if(error.code == '11000') {
+                    console.log(error); 
+                    let listadoSKUs: string [] = [];
+                    let listadoOfferIds: string []= [];
+                    const writeErrors = Array.isArray(error.writeErrors) ? error.writeErrors : [error.writeErrors];
+                    for (const writeError of writeErrors) {
+                        if (writeError.err.errmsg.includes('offer_id')){
+                            listadoOfferIds.push(writeError.err.op.offer_id);
+                        }
+                        if (writeError.err.errmsg.includes('sku')){
+                            listadoSKUs.push(writeError.err.op.sku);
+                        }
                     }
-                    if (writeError.err.errmsg.includes('sku')){
-                        listado.push(` {offer_id: ${writeError.err.op.offer_id} - sku: ${writeError.err.op.sku} - campo: sku}`);
-                    }
+                    throw new OfferAlreadyExists("", listadoSKUs, listadoOfferIds); //Lanza un error si ya existen los SKUs o offer_id    
                 }
-                throw new Error(`Error al actualizar offers, sku y/o offer_id ya existen para estos registros:${(listado)}`);     
-            }
-            if (error instanceof OfferNotFoundError){
-                throw error; //Si el error es de tipo OfferNotFoundError, lo lanzamos
             }
             console.error('Error al actualizar offers:', error);
-            throw new Error(`Error al actualizar offers: ${error.message}`);     
+            if (error instanceof OfferNotFoundError || error instanceof Error){
+                throw error; 
+            }
+            throw new Error(`Error al actualizar offers: ${error}`);     
         }
-        return offers; 
+        return offersUpdated; 
     }
 
     /**
      * @param {Offer[]} offers
      * @returns {Promise<Offer[]>}
      */
-    async updateOffer(offers) {        
+    async updateOffer(offers: Offer[]): Promise<Offer[]> {       
+         
         try{
             var query = []
 
@@ -220,16 +218,12 @@ class OfferMongoDBRepository implements OfferRepository {
      * @param {Offer[]} offers 
      * @returns {Promise<string>}
      */
-    async deleteOffer(offers) { 
-        let resultado = "";
+    async deleteOffer(offers: Offer[]): Promise<string> { 
+        let resultado: string = "";
         try{
             var query = []
             for (const offer of offers) {
                 var queryIndividual = { deleteOne: { filter: { sku: offer.sku }}};
-
-                if(offer.isPublished != undefined) { 
-                    queryIndividual.updateOne.update.$set.is_published = offer.isPublished; //Si is_published esta definido, lo actualizamos
-                } 
                 query.push(queryIndividual)       
             }
             const res = await getDb().collection('offers').bulkWrite(query);
@@ -238,16 +232,15 @@ class OfferMongoDBRepository implements OfferRepository {
         }
         catch (error) {
             console.error('Error al elimianar offers:', error);
-            throw new Error(`Error al elimianar offers: ${error.message}`);     
+            if (error instanceof Error){
+                throw new Error(`Error al elimianar offers: ${error.message}`);     
+            }
+            throw new Error(`Error al elimianar offers: ${error}`);     
         }
         return resultado;  
     }
 
-    /**
-     * @param {OfferFilters} offerFilters
-     * @returns {Promise<number>} - Devuelve el total de offers que cumplen con los filtros
-     */
-    async count(offerFilters){ 
+    async count(offerFilters: OfferFilters): Promise<number> { 
         let count = 0;
          try{
             this._cleanFindQuery(offerFilters); //Limpia los filtros de busqueda de mongodb y elimina campos vacios o no definidos
@@ -258,7 +251,10 @@ class OfferMongoDBRepository implements OfferRepository {
         }
         catch (error) {
             console.error('Error al countar los documentos:', error);
-            throw new Error(`Error al countar los documentos: ${error.message}`);     
+            if (error instanceof Error){
+                throw new Error(`Error al countar los documentos: ${error.message}`);     
+            }
+            throw new Error(`Error al countar los documentos: ${error}`);     
         }
         return count;
     }
@@ -286,43 +282,14 @@ class OfferMongoDBRepository implements OfferRepository {
     }
     
 
-    /**
-     * Limpia los filtros de busqueda de mongodb y elimina campos vacios o no definidos
-     * @param {OfferFilters} offerFilters - Filtros para la consulta
-     * @return {Object} - Devuelve un objeto con la query para mongoDB
-     */
-    _cleanFindQuery(offerFilters) {
-        for (const key in offerFilters) {
-            if (offerFilters[key] == undefined) {
-                delete offerFilters[key]; //Si es un string vacio, lo eliminamos        
+    // Limpia los filtros de busqueda de mongodb y elimina campos vacios o no definidos
+    _cleanFindQuery(offerFilters: OfferFilters): void {
+        const obj = offerFilters as Record<string, any>; //Lo casteamos a un objeto de tipo Record<string, any> para poder iterar sobre sus propiedades
+        for (const key in obj) {
+            if (obj[key] == undefined) {
+                delete obj[key]; //Si es un string vacio, lo eliminamos        
             }
         }
-        return offerFilters;
-    }
-
-    /**
-     * Mapea un documento de la base de datos a un objeto Offer
-     * @param {import("mongodb").WithId<import("mongodb").Document>} document - Documento de la base de datos
-     * @return {Offer} - Objeto Offer mapeado
-     * @private
-     */
-    _mapDocumentToOffer(document) {
-        const priceArray = Array.isArray(document.prices) ? document.prices : [];
-        const prices = priceArray.map(a =>
-          new Price({
-            currency:  a.currency,
-            type:      a.type,
-            value:     a.value
-          })
-        );
-        //@ts-ignore
-        return new Offer({
-          offerId:      document.offer_id,
-          sku:          document.sku,
-          isPublished:  document.is_published,
-          ...(prices.length && {prices}), // Si no hay precios,
-        });
-
     }
 }
 

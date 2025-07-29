@@ -29,6 +29,24 @@ class OfferNotFoundError extends Error {
   }
 }
 
-export{    
+class OfferAlreadyExists extends Error {
+  
+  message: any;
+    constructor(message: any, skus_already_exists: string[] | number[] = [], offer_id_already_exists: string[] | number[] = []) {
+        super("Error al crear offers, sku y/o offer_id ya existen para estos registros"); //Llama al constructor de la clase padre (Error)
+    this.message = {
+      message: `Error al crear offers, sku y/o offer_id ya existen para estos registros.${message}`,
+      ...(skus_already_exists.length && {
+        skus_already_exists: Array.isArray(skus_already_exists) ? skus_already_exists : [skus_already_exists]
+      }),
+      ...(offer_id_already_exists.length && {
+        offer_id_already_exists: Array.isArray(offer_id_already_exists) ? offer_id_already_exists : [offer_id_already_exists]
+      })
+    };
+  }
+}
+
+export{
+  OfferAlreadyExists,
   OfferNotFoundError
 };

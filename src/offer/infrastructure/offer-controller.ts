@@ -1,19 +1,19 @@
 //@ts-check
 //const { ProductoNotFoundError, ProductWithSKUAlreadyExistsError } = require("../domain/product-errors"); //Para poder identificar el tipo de error (instance of) que viene desde las capas dominio y poder manejarlo en el controller
-const httpError = require("../../shared/infrastructure/errors/http-errors"); //Para poder enviar al cliente error con status code y mensaje de error
+import * as httpError from "../../shared/infrastructure/errors/http-errors"; //Para poder enviar al cliente error con status code y mensaje de error
 import { NextFunction } from "express";
 //const ProductFiltersDTO = require('../application/product-filters-dto.js');
 import PaginationMetadata from "../../shared/application/pagination-metadata";
-const PaginationsParams = require("../../shared/domain/paginations-params-vo");
+import PaginationsParams from "../../shared/domain/paginations-params-vo";
 import type PaginationMetadataResponseDTO from "../../shared/application/pagination-metadata-dto";
 import { toPaginationMetadataResponseDTO } from "../../shared/application/pagination-metadata-mapper";
 import { CustomResponse } from "../../shared/infrastructure/middlewares/response-handlers";
 import OfferFiltersDTO from "../application/offer-filters-dto";
 import { CreateOfferRequestDTO, DeleteOfferRequestDTO, UpdateFullOfferRequestDTO, UpdatePartialOfferRequestDTO } from "../application/offer-request-dto";
 import { jsonToCreateOfferRequestDTO, jsonToDeleteOfferRequestDTO, jsonToUpdateFullOfferRequestDTO, jsonToUpdatePartialOfferRequestDTO } from "../application/offer-request-mapper";
-const OfferResponseDTO = require("./offer-response-dto.js");
-const { OfferNotFoundError } = require("../domain/offer-errors");
-const Offer = require("../domain/offer-entity");
+import OfferResponseDTO from "./offer-response-dto.js";
+import { OfferNotFoundError } from "../domain/offer-errors";
+import Offer  from "../domain/offer-entity";
 import type OfferService from "../application/offer-service";
 import { json } from "stream/consumers";
 
