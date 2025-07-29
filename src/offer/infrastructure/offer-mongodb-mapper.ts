@@ -27,6 +27,19 @@ export function offerToMongoDTO(offer: Offer): OfferMongoDTO {
 }
 
 
+export function offerToPartialUpdateMongoDTO(offer: Offer): Partial<OfferMongoDTO> {
+    return {
+        //Solo pondremos los campos que queremos actualizar, si no estan definidos, no se actualizan
+        ...(offer.offerId !== undefined && { offer_id: offer.offerId }),
+        ...(offer.isPublished !== undefined && { is_published: offer.isPublished }),
+        ...(offer.prices?.length
+        ? { prices: offer.prices.map(priceToMongoDTO) }
+        : {}),
+    };
+}
+
+
+
 export function mongoOfferDTOtoEntity(dto: OfferMongoDTO): Offer {
     const prices = dto.prices?.map(a =>
         new Price({
