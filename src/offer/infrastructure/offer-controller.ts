@@ -1,7 +1,7 @@
 //@ts-check
 //const { ProductoNotFoundError, ProductWithSKUAlreadyExistsError } = require("../domain/product-errors"); //Para poder identificar el tipo de error (instance of) que viene desde las capas dominio y poder manejarlo en el controller
 import * as httpError from "../../shared/infrastructure/errors/http-errors"; //Para poder enviar al cliente error con status code y mensaje de error
-import { NextFunction } from "express";
+import { NextFunction, Request } from "express";
 //const ProductFiltersDTO = require('../application/product-filters-dto.js');
 import PaginationMetadata from "../../shared/application/pagination-metadata";
 import PaginationsParams from "../../shared/domain/paginations-params-vo";
@@ -9,13 +9,15 @@ import type PaginationMetadataResponseDTO from "../../shared/application/paginat
 import { toPaginationMetadataResponseDTO } from "../../shared/application/pagination-metadata-mapper";
 import { CustomResponse } from "../../shared/infrastructure/middlewares/response-handlers";
 import OfferFiltersDTO from "../application/offer-filters-dto";
-import { CreateOfferRequestDTO, DeleteOfferRequestDTO, UpdateFullOfferRequestDTO, UpdatePartialOfferRequestDTO } from "../application/offer-request-dto";
+import type { CreateOfferRequestDTO, DeleteOfferRequestDTO, UpdateFullOfferRequestDTO, UpdatePartialOfferRequestDTO } from "../application/offer-request-dto";
 import { jsonToCreateOfferRequestDTO, jsonToDeleteOfferRequestDTO, jsonToUpdateFullOfferRequestDTO, jsonToUpdatePartialOfferRequestDTO } from "../application/offer-request-mapper";
-import OfferResponseDTO from "./offer-response-dto.js";
-import { OfferNotFoundError } from "../domain/offer-errors";
-import Offer  from "../domain/offer-entity";
+import {OfferResponseDTO} from "./offer-response-dto";
+import { OfferNotFoundError, OfferAlreadyExists } from "../domain/offer-errors";
 import type OfferService from "../application/offer-service";
-import { json } from "stream/consumers";
+import { offerToResponseDTO } from "./offer-respone-mapper";
+import type Offer from "../domain/offer-entity";
+import { ProductoNotFoundError } from "../../products/domain/product-errors";
+
 
 class OfferController {
     offerService: OfferService;
@@ -31,14 +33,8 @@ class OfferController {
     }
 
 
-    /**JSdoc para definir los tipos de los parametros de la funcion:
-     @param {import("express").Request} req - The request object
-     @param {import("express").Response & {success}} res - The response object
-     @param {import("express").NextFunction} next - The next function
-    */
-    async createOffer(req, res, next) {
+    async createOffer(req: Request, res: CustomResponse<OfferResponseDTO[], PaginationMetadataResponseDTO>, next: NextFunction): Promise<void> {
         try {
-            
             const requestBody = req.body;
             //Si el req.body no es un array, da error con un if
             if (!Array.isArray(requestBody)) {
@@ -58,21 +54,27 @@ class OfferController {
                         if (price.value < 0) {
                             return next(httpError.BadRequestError(`El precio de la oferta ${offer.sku} no puede ser negativo`));
                         }
-
                     }
                     
                 }
             }
-            const requestDTO = requestBody.map(jsonToCreateOfferRequestDTO)
-            const result = await this.offerService.createOffer(requestDTO);
-            const offerRespone = result.map(offer => new OfferResponseDTO(offer));
+            const requestDTO: CreateOfferRequestDTO[] = requestBody.map(jsonToCreateOfferRequestDTO)
+            const result: Offer[] = await this.offerService.createOffer(requestDTO);
+            const offerRespone: OfferResponseDTO[] = result.map(offerToResponseDTO);
             res.status(201).success({data: offerRespone});
         } catch (error) {
-            return next(httpError.InternalServerError(error.message));
+            if(error instanceof ProductoNotFoundError){
+                return next(httpError.NotFoundError(error.message));
+            }
+            if (error instanceof OfferAlreadyExists) {
+                return next(httpError.BadRequestError(error.message));
+            }
+            const msg = error instanceof Error ? error.message: String(error);
+            return next(httpError.InternalServerError(msg));
         }
     }
 
-    async updateFullOffer(req: Request, res: CustomResponse<any[], PaginationMetadataResponseDTO>, next: NextFunction) {
+    async updateFullOffer(req: Request, res: CustomResponse<any[], PaginationMetadataResponseDTO>, next: NextFunction): Promise<void> {
         try {
             const requestBody = req.body;
             //Si el req.body no es un array, da error con un if
@@ -88,14 +90,18 @@ class OfferController {
             }
             const requestDTO: UpdateFullOfferRequestDTO[] = requestBody.map(jsonToUpdateFullOfferRequestDTO);
             const result = await this.offerService.updateFullOffer(requestDTO);
-            const offerResponse = result.map(offer => new OfferResponseDTO(offer));
+            const offerResponse = result.map(offerToResponseDTO);
 
             res.status(201).success({data:offerResponse});
         } catch (error) {
+            if (error instanceof OfferAlreadyExists) {
+                return next(httpError.BadRequestError(error.message));
+            }
             if(error instanceof OfferNotFoundError){
                 return next(httpError.NotFoundError(error.message));
             }
-            return next(httpError.InternalServerError(error.message));
+            const msg = error instanceof Error ? error.message: String(error);
+            return next(httpError.InternalServerError(msg));
         }
     }
 
@@ -114,18 +120,22 @@ class OfferController {
             }
             const requestDTO: UpdatePartialOfferRequestDTO[] = requestBody.map(jsonToUpdatePartialOfferRequestDTO)
             const result = await this.offerService.updateOffer(requestDTO);
-            const offerResponse = result.map(offer => new OfferResponseDTO(offer));
+            const offerResponse = result.map(offerToResponseDTO);
 
             res.status(201).success({data:offerResponse});
         } catch (error) {
+            if (error instanceof OfferAlreadyExists) {
+                return next(httpError.BadRequestError(error.message));
+            }
             if(error instanceof OfferNotFoundError){
                 return next(httpError.NotFoundError(error.message));
             }
-            return next(httpError.InternalServerError(error.message));
+            const msg = error instanceof Error ? error.message: String(error);
+            return next(httpError.InternalServerError(msg));
         }
     }
 
-    async deleteOffer(req, res, next) {
+    async deleteOffer(req: Request, res: CustomResponse<any[], PaginationMetadataResponseDTO>, next: NextFunction): Promise<void> {
         try {
             const requestBody = req.body;
             let arrayDeSkus = [];
@@ -143,31 +153,22 @@ class OfferController {
             }
             const requestDTO: DeleteOfferRequestDTO[] = requestBody.map(jsonToDeleteOfferRequestDTO)
             const result = await this.offerService.deleteOffer(requestDTO);
-            //const offerResponse = result.map(product => new OfferResponseDTO(product));
             res.status(200).success({message: result});
         } catch (error) {
-            if(error instanceof OfferNotFoundError){
-                return next(httpError.NotFoundError(error.message));
-            }
-            return next(httpError.InternalServerError(error.message));
+            const msg = error instanceof Error ? error.message: String(error);
+            return next(httpError.InternalServerError(msg));
         }
     }
 
 
-    /**
-     * Aca definimos los parametros para que el AUTOMCOMPLTEADO AYUDE
-     * @param {import("express").Request} req - The request object
-     * @param {import("express").Response & {success}} res - The response object
-     * @param {import("express").NextFunction} next - The next function
-     */
-    async getAll(req, res, next) {
+    async getAll(req: Request, res: CustomResponse<any[], PaginationMetadataResponseDTO>, next: NextFunction): Promise<void> {
       try {
 
         const { sku, offer_id, page = 0, limit = 0 } = req.query;
 
         const offerFiltersDTO: OfferFiltersDTO = {
-            sku: sku,
-            offer_id: offer_id,
+            sku: sku?.toString(),
+            offer_id: offer_id?.toString(),
         };
 
         const totalCount = await this.offerService.count(offerFiltersDTO);
@@ -177,12 +178,12 @@ class OfferController {
         const offers = await this.offerService.getAllOffers(offerFiltersDTO, paginationsParams);
         paginationMetadata.count = offers.length;
         const paginationMetadataResponseDTO = toPaginationMetadataResponseDTO(paginationMetadata);
-        const offerResponse = offers.map(offer => new OfferResponseDTO(offer));
-
+        const offerResponse = offers.map(offerToResponseDTO);
     
         res.success({data: offerResponse, message: 'success', meta: paginationMetadataResponseDTO});
       } catch (error) {
-        return next(httpError.InternalServerError(error.message));
+        const msg = error instanceof Error ? error.message: String(error);
+        return next(httpError.InternalServerError(msg));
       }
     } 
   }
