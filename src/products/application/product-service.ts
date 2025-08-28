@@ -31,26 +31,33 @@ class ProductService {
   //GetAllProduct recibe un objeto de tipo productFiltersDTO y parametros de paginacion (page y perpage) trasnformara este DTO a un objeto de tipo ProductFilters
 
   async getAllProducts(productFiltersDTO: ProductFiltersDTO, paginationsParams: PaginationsParams): Promise<Product[]> {
-    //Transformamos el DTO a un intercface de tipo ProductFilters
-    //Aqui a futuro en vez de transformar el DTO a un objeto de tipo ProductFilters directamente
-    //podriamos usar un mapper que se encargue de transformar el DTO a un objeto de tipo ProductFilters
-    const productFilters: ProductFilters = {
-      sku: productFiltersDTO.sku,
-      category_code: productFiltersDTO.category_code
-    };
+    try{
+      //Transformamos el DTO a un intercface de tipo ProductFilters
+      //Aqui a futuro en vez de transformar el DTO a un objeto de tipo ProductFilters directamente
+      //podriamos usar un mapper que se encargue de transformar el DTO a un objeto de tipo ProductFilters
+      const productFilters: ProductFilters = {
+        sku: productFiltersDTO.sku,
+        category_code: productFiltersDTO.category_code
+      };
+      const productos: Product[] = await this.productRepository.getAllProducts(productFilters, paginationsParams);
+      return productos;
+    } catch (error) {
+      throw error;
+    }
 
-    const productos: Product[] = await this.productRepository.getAllProducts(productFilters, paginationsParams);
-    return productos;
   }
 
   async count (productFiltersDTO: ProductFiltersDTO): Promise<number> {
-    const productFilters: ProductFilters = {
-      sku: productFiltersDTO.sku,
-      category_code: productFiltersDTO.category_code
-    };
-    const count: number = await this.productRepository.count(productFilters);
-    return count;
-
+    try{
+      const productFilters: ProductFilters = {
+        sku: productFiltersDTO.sku,
+        category_code: productFiltersDTO.category_code
+      };
+      const count: number = await this.productRepository.count(productFilters);
+      return count;
+    } catch (error) {
+      throw error;
+    }
   }
 
   async getProductBySku(sku: string): Promise<Product[]> {
