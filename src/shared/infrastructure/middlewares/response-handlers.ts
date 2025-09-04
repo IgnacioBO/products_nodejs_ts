@@ -1,11 +1,10 @@
-  //@ts-check
   import { Request, Response, NextFunction, ErrorRequestHandler } from 'express';
   import { ResponseModel } from './response-model';
 
   //Extendemos la interfaz Response de express para agregarle un método success
   //Se usara <T> para que sea generico y "data" (payload) pueda ser de cualquier tipo
   export interface CustomResponse<T, U> extends Response {
-    success(argumentos: { data?: T, message?: string, meta?: U }): Response;
+    success(argumentos: { data?: T, message?: string, meta?: U, warnings?: any }): Response;
     ok(argumentos: { data?: T, message?: string, meta?: U }): Response;
   }
 
@@ -21,10 +20,17 @@
     //Ojo que este casteo no se verifica en tiempo de ejecucion, solo en tiempo de compilacion, asi que al llegar a esta linea, puede no dar error si no se ha definido el metodo success
     const r = res as CustomResponse<any, any>;
     
-    r.success = ({data, message = 'success', meta = {} }) => {
+    r.success = ({data, message, meta = {}, warnings }) => {
+      if(!message){
+        message = 'success';
+          if(warnings){
+           message = 'success_with_warnings';
+        }
+      }
       return r.json(new ResponseModel({
         status: r.statusCode,          // p. ej. 200
-        message,                          // p. ej. 'Datos obtenidos'
+        message,                        // p. ej. 'Datos obtenidos'
+        warnings,                         
         ...(data && { data }),                             // payload
         ...(Object.keys(meta).length && { meta })          // meta solo se pone si tiene algo
         }));    

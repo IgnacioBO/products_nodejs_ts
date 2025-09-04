@@ -5,11 +5,14 @@ import { makeProductRepoMock } from "../domain/product-repository.mock";
 import { ProductResponseDTO } from "./product-response-dto";
 import PaginationMetadataResponseDTO from "../../shared/application/pagination-metadata-dto";
 import { ProductoNotFoundError, ProductWithSKUAlreadyExistsError } from "../domain/product-errors";
+import { EventBus } from "../../shared/application/event-bus-kafka";
+import { KafkaEventBus } from "../../shared/infrastructure/kafka/kafka-event-bus";
 
 //Haremos Test de Integracion (osea probaremos controler + service), pero mockearemos el repo
 
 //Estas variables se usaran en todos los tests asi que lo definieremos aca
 let repo : jest.Mocked<ProductRepository>;
+let eventBus: jest.Mocked<EventBus>;
 let service : ProductService;
 let controller : ProductController;
 
@@ -18,7 +21,8 @@ beforeEach(() => {
     jest.clearAllMocks();
     
     repo = makeProductRepoMock();
-    service = new ProductService(repo);
+    eventBus = {publish: jest.fn()}; //Eventbus requiere una funcion llamada publish, asi que la mockeamos
+    service = new ProductService(repo, eventBus);
     controller = new ProductController(service);
 });
 

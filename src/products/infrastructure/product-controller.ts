@@ -115,9 +115,9 @@ class ProductController {
             }
             const productsDTOArray: CreateProductRequestDTO[] = requestBody.map(rb => jsonToCreateProductRequestDTO(rb));
             //Version corta: const productsDTOArray = requestBody.map(jsonToCreateProductRequestDTO);
-            const products = await this.productService.createProduct(productsDTOArray);
+            const {products, warnings} = await this.productService.createProduct(productsDTOArray);
             const productResponse = products.map(productToResponseDTO);
-            res.status(201).success({data: productResponse});
+            res.status(201).success({data: productResponse, warnings});
         } catch (error) {
             if(error instanceof ProductWithSKUAlreadyExistsError){
                 return next(httpError.BadRequestError(error.message));

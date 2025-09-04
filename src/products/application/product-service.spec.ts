@@ -9,6 +9,9 @@ import {requestDTOtoEntity, requestDeleteDTOtoEntity} from './product-request-ma
 import { before } from "node:test";
 import { rejects } from "assert";
 import { resolve } from "path";
+import { EventBus } from "../../shared/application/event-bus-kafka";
+import { KafkaEventBus } from "../../shared/infrastructure/kafka/kafka-event-bus";
+import { KafkaJSError } from 'kafkajs';
 
 //Esta funcion lo que hace es crear un mock de ProductRepository
 //jest.Mocked<ProductRepository> hace que todos los metodos de ProductRepository sean funciones mockeadas
@@ -29,19 +32,31 @@ function makeProductRepoMock (): jest.Mocked<ProductRepository>  {
     };
 }
 
+function makeEventBusMock (): jest.Mocked<EventBus>  {
+    return {
+        publish: jest.fn(),
+    }
+}
+
+
 //Estas variables se usaran en todos los tests asi que lo definieremos aca
 let repo : jest.Mocked<ProductRepository>;
+let eventBus : jest.Mocked<EventBus>;
 let service : ProductService;
+let topic: string;
 
 
 //BeforeEach permite ejecutar una funcion antes de cada prueba dentro de describe
 beforeEach(() => {
+    topic = 'test-topic';
     //Usamos clearAllMocks para limpiar los mocks antes de cada prueba
     jest.clearAllMocks();
     
     //Mockeamos las funciones
     repo = makeProductRepoMock();
-    service = new ProductService(repo);
+    eventBus = makeEventBusMock ();
+    service = new ProductService(repo, eventBus);
+    service.eventTopic = topic;
 });
 
 //describe permite agrupar pruebas relacionadas
@@ -62,6 +77,58 @@ describe("createProduct service", () => {
         // Llamamos al servicio para crear el producto
         await expect(service.createProduct([]))
         .rejects.toThrow('Error al crear el producto');
+    });
+
+    test('create product with kafka error', async () => {
+    
+        const dto: CreateProductRequestDTO[] = [{
+            sku: '12345',
+            parent_sku: '54321',
+            title: "test titulo",
+            category_code: "R1000",
+            description: "TEst Producto",
+            short_description: "TEst short",
+            is_published: true,
+        }];
+
+        //Usamos la funcion mockResolvedValueOnce que permite simular la respuesta de la funcion createProduct
+        repo.createProduct.mockResolvedValueOnce([{
+            sku: '12345',
+            parentSku: '54321',
+            title: "test titulo",
+            categoryCode: "R1000",
+            description: "TEst Producto",
+            shortDescription: "TEst short",
+            isPublished: true,
+        }]);
+
+        eventBus.publish.mockRejectedValueOnce(new KafkaJSError('Error al publicar en Kafka'));
+
+        // Llamamos al servicio para crear el producto
+        const result = await service.createProduct(dto);
+
+        // Verificamos que la funcion createProduct del repositorio fue llamada una vez
+        expect(repo.createProduct).toHaveBeenCalledTimes(1); 
+
+        //Aqui se espera que la funcion del repo se llamada con los parametros correctos, que en este caso es un map del dto
+        expect(repo.createProduct).toHaveBeenCalledWith(dto.map(requestDTOtoEntity));
+
+        // Verificamos que el resultado es el esperado
+        //Aqui tambien puede usarse expect().resolves pero debe ser usado con await
+        //Ahora no es necesario porque estamos usando await en la llamada al servicio
+        expect(result.products).toEqual([{
+            sku: '12345',
+            parentSku: '54321',
+            title: "test titulo",
+            categoryCode: "R1000",
+            description: "TEst Producto",
+            shortDescription: "TEst short",
+            isPublished: true,
+        }]);
+
+        expect(eventBus.publish).toHaveBeenCalledTimes(1);
+        expect(result.warnings).toBeDefined();
+        expect(result.warnings![0]).toEqual({details:"Error al publicar en Kafka", message: "KafkaJSError al publicar evento en topic '" + topic + "'"});
     });
 
     test ('create basic product', async () => {
@@ -99,7 +166,7 @@ describe("createProduct service", () => {
         // Verificamos que el resultado es el esperado
         //Aqui tambien puede usarse expect().resolves pero debe ser usado con await
         //Ahora no es necesario porque estamos usando await en la llamada al servicio
-        expect(result).toEqual([{
+        expect(result.products).toEqual([{
             sku: '12345',
             parentSku: '54321',
             title: "test titulo",

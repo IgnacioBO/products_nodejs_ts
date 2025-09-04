@@ -1,15 +1,17 @@
 interface IResponseModel<T = any, M = any> {
   status: number;
-  errors?: any;
   message?: string;
+  errors?: any;
+  warnings?: any;
   data?: T;
   meta?: M;
 }
 
 export class ResponseModel<T = any, M = any> implements IResponseModel<T, M> {
   status: number;
-  errors?: any;
   message?: string;
+  errors?: any;
+  warnings?: any;
   data?: T;
   meta?: M;
 
@@ -20,8 +22,9 @@ export class ResponseModel<T = any, M = any> implements IResponseModel<T, M> {
   constructor(params: Partial<IResponseModel<T, M>> = {}) {
     //Object.assign(this, params);
     this.status = params.status || 500; // Default status is 500
-    this.errors = params.errors;
     this.message = params.message;
+    this.errors = params.errors;
+    this.warnings = params.warnings;
     this.data = params.data;
     this.meta = params.meta;
   }

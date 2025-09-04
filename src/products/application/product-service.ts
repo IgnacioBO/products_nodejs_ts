@@ -6,6 +6,11 @@ import PaginationsParams  from '../../shared/domain/paginations-params-vo';
 import type ProductRepository from '../domain/product-repository.js';
 import {CreateProductRequestDTO, UpdateFullProductRequestDTO, UpdatePartialProductRequestDTO, DeleteProductRequestDTO} from './product-request-dto';
 import {requestDTOtoEntity, requestDeleteDTOtoEntity} from './product-request-mapper';
+import { EventBus } from '../../shared/application/event-bus-kafka';
+import { randomUUID } from "crypto";
+import { Kafka, KafkaJSConnectionError, KafkaJSError } from 'kafkajs';
+
+
 
 //Aqui haremos una clase ProductService que se encargara de manejar 
 // la logica de negocio de los productos y de interactuar con el repositorio de productos
@@ -23,9 +28,14 @@ import {requestDTOtoEntity, requestDeleteDTOtoEntity} from './product-request-ma
 
 class ProductService {
   productRepository: ProductRepository;
+  //Eventbus permite publicar en kafka
+  eventBus : EventBus;
+  eventTopic: string;
   //Constructor que recibirá el repositorio de productos como parametro (que lo inyectaremos desde el index.js)
-  constructor(productRepository: ProductRepository) {
+  constructor(productRepository: ProductRepository, eventBus: EventBus) {
     this.productRepository = productRepository;
+    this.eventBus = eventBus;
+    this.eventTopic = String(process.env.KAFKA_PRODUCT_TOPIC);
   }
 
   //GetAllProduct recibe un objeto de tipo productFiltersDTO y parametros de paginacion (page y perpage) trasnformara este DTO a un objeto de tipo ProductFilters
@@ -71,21 +81,40 @@ class ProductService {
         throw error;
     }
   }
-  
-  async createProduct(productsDTO: CreateProductRequestDTO[]): Promise<Product[]> {
+
+  async createProduct(productsDTO: CreateProductRequestDTO[]): Promise<{products: Product[], warnings?: any[]}> {
+    let result : Product[] = [];
     try{
         //Transformamos el array de productos de un json a un array de objetos de la clase Product
         //const productsObjectArray = products.map(p => jsonToCreateProductRequestDTO(p));
         //Aqui llamamos al repositorio de productos y le pasamos el array de objetos de la clase Product
         //El repo hace la insercion y nos devuelve un array de objetos Product con los datos insertados
         const productsObjectArray: Product[] = productsDTO.map(p => requestDTOtoEntity(p));
-        const result : Product[] = await this.productRepository.createProduct(productsObjectArray);
-        return result;
+        result = await this.productRepository.createProduct(productsObjectArray);
+
+        //Luego de crear los productos publicamos un evento en kafka
+        /*TODO: 
+        // Hacer un DTO que convierta el producto a un formato adecuado para Kafka, pq ahora estoy enviando el request
+        */
+        await this.eventBus.publish(this.eventTopic, [{
+          event_id: randomUUID(), //id unico del evento
+          event_name: "product.created",
+          event_data_format: 'JSON',
+          creation_date: new Date().toISOString(),
+          timestamp: Date.now(),
+          payload: productsObjectArray,
+        }]);
+        return {products: result};
     }
     catch (error) {
-        throw error;
+      if(error instanceof KafkaJSError){
+        let message = "KafkaJSError al publicar evento en topic '" + this.eventTopic + "'";
+        console.log(message);
+        console.log(error);
+        return {products: result, warnings: [{message, details: error.message}]};
+      }
+      throw error;
     }
-
   }
 
 

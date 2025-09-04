@@ -15,19 +15,24 @@ import ProductRepository from './products/infrastructure/product-postgre-reposit
 import ProductService from './products/application/product-service';
 import ProductController from './products/infrastructure/product-controller';
 import ProductRoutesFactory from './products/infrastructure/product-routes';
-
-//TODO: productRepository deberia recibir el pool como parametro
-//const productRepository = new ProductRepository(pool);
-const productRepository = new ProductRepository();
-//Creamos una instancia del repositorio de productos y la pasamos como parametro al constructor de la clase ProductService
-const productService = new ProductService(productRepository);
-//Creamos una instancia del servicio de productos y la pasamos como parametro al constructor de la clase ProductController
-const productController = new ProductController(productService);
+import { KafkaEventBus } from './shared/infrastructure/kafka/kafka-event-bus';
+import { kafkaClient } from './shared/infrastructure/kafka/kafka-client'; // brokers desde env
 
 import OfferRepository from './offer/infrastructure/offer-mongodb-repository';
 import OfferService from './offer/application/offer-service';
 import OfferController from './offer/infrastructure/offer-controller';
 import offerRoutesFactory from './offer/infrastructure/offer-routes';
+
+//EventBus para pubicar en kafka
+const eventBus: KafkaEventBus = new KafkaEventBus();
+
+//TODO: productRepository deberia recibir el pool como parametro
+//const productRepository = new ProductRepository(pool);
+const productRepository = new ProductRepository();
+//Creamos una instancia del repositorio de productos y la pasamos como parametro al constructor de la clase ProductService
+const productService = new ProductService(productRepository, eventBus);
+//Creamos una instancia del servicio de productos y la pasamos como parametro al constructor de la clase ProductController
+const productController = new ProductController(productService);
 
 const offerRepository = new OfferRepository();
 const offerService = new OfferService(productService, offerRepository);
@@ -50,9 +55,31 @@ async function main(): Promise<void>{
     app.use('/api/products', ProductRoutesFactory({productController: productController}));
     app.use('/api/offers', offerRoutesFactory({offerController: offerController}));
 
+
+    // Creamos los topics products y offers en Kafka en caso de que no existan
+    
+    try{
+        const admin = kafkaClient.admin();
+        await admin.connect();
+        let topics = [String(process.env.KAFKA_PRODUCT_TOPIC), String(process.env.KAFKA_OFFER_TOPIC)];
+        let topicsCreated : string[] = await admin.listTopics();
+        let topicsNotCreated = topics.filter(t => !topicsCreated.includes(t));
+        if(topicsNotCreated.length > 0){
+            await admin.createTopics({
+                waitForLeaders: true,
+                topics: topicsNotCreated.map(t => ({ topic: t, numPartitions: 3, replicationFactor: 1 }))
+            });
+        }
+        await admin.disconnect();
+    } catch(error){
+        console.error("Error al intentar conectarse a Kafka, no fue posible verificar los topics: ", error);
+    }
+
+    // Iniciamos el servidor
     const server = app.listen(app.get('port'), () => {
         console.log(`Server on port ${app.get('port')}`);
     }) 
+
 
     //Estos manejadores de eventos permiten cerrar el servidor y la conexión a MongoDB de manera limpia cuando se recibe una señal de interrupción (SIGINT o SIGTERM)
     //Esto es importante para evitar que se queden conexiones abiertas y no se liberen los recursos
