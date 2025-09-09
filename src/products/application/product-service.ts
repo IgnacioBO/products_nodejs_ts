@@ -9,6 +9,8 @@ import {requestDTOtoEntity, requestDeleteDTOtoEntity} from './product-request-ma
 import { EventBus } from '../../shared/application/event-bus-kafka';
 import { randomUUID } from "crypto";
 import { Kafka, KafkaJSConnectionError, KafkaJSError } from 'kafkajs';
+import { ProductKafkaDTO } from './product-kafka-dto';
+import { productToKafkaDTO } from './product-kafka-mapper';
 
 
 
@@ -96,13 +98,14 @@ class ProductService {
         /*TODO: 
         // Hacer un DTO que convierta el producto a un formato adecuado para Kafka, pq ahora estoy enviando el request
         */
-        await this.eventBus.publish(this.eventTopic, [{
+       const resultoToKafkaDTO : ProductKafkaDTO[] = result.map(productToKafkaDTO);
+       await this.eventBus.publish(this.eventTopic, [{
           event_id: randomUUID(), //id unico del evento
           event_name: "product.created",
           event_data_format: 'JSON',
           creation_date: new Date().toISOString(),
           timestamp: Date.now(),
-          payload: productsObjectArray,
+          payload: resultoToKafkaDTO,
         }]);
         return {products: result};
     }
@@ -119,40 +122,67 @@ class ProductService {
 
 
   //CreateDTOtoEntity
-  async updateFullProduct(productsDTO: UpdateFullProductRequestDTO[]): Promise<Product[]> {
+  async updateFullProduct(productsDTO: UpdateFullProductRequestDTO[]): Promise<{products: Product[], warnings?: any[]}> {
+    let result : Product[] = [];
     try{
         //Transformamos el array de productos de un json a un array de objetos de la clase Product
         const productsObjectArray: Product[] = productsDTO.map(requestDTOtoEntity);
         //Aqui llamamos al repositorio de productos y le pasamos el array de objetos de la clase Product
         //El repo hace la insercion y nos devuelve un array de objetos Product con los datos insertados
-        const result : Product[] = await this.productRepository.updateFullProduct(productsObjectArray);
-        return result;
+        result = await this.productRepository.updateFullProduct(productsObjectArray);
+        const resultoToKafkaDTO : ProductKafkaDTO[] = result.map(productToKafkaDTO);
+        await this.eventBus.publish_with_default_meta(this.eventTopic, "product.updated", resultoToKafkaDTO);
+        return {products: result};
     }
     catch (error) {
+      if(error instanceof KafkaJSError){
+        let message = "KafkaJSError al publicar evento en topic '" + this.eventTopic + "'";
+        console.log(message);
+        console.log(error);
+        return {products: result, warnings: [{message, details: error.message}]};
+      }
         throw error;
     }
 
   }
 
-  async updateProduct(productsDTO: UpdatePartialProductRequestDTO[]): Promise<Product[]> {
+  async updateProduct(productsDTO: UpdatePartialProductRequestDTO[]): Promise<{products: Product[], warnings?: any[]}> {
+    let result : Product[] = [];
     try{
         const productsObjectArray: Product[] = productsDTO.map(requestDTOtoEntity);
-        const result: Product[] = await this.productRepository.updateProduct(productsObjectArray);
-        return result;
+        result = await this.productRepository.updateProduct(productsObjectArray);
+        const resultoToKafkaDTO : ProductKafkaDTO[] = result.map(productToKafkaDTO);
+        await this.eventBus.publish_with_default_meta(this.eventTopic, "product.updated", resultoToKafkaDTO);
+        return {products: result};
     }
     catch (error) {
+      if(error instanceof KafkaJSError){
+        let message = "KafkaJSError al publicar evento en topic '" + this.eventTopic + "'";
+        console.log(message);
+        console.log(error);
+        return {products: result, warnings: [{message, details: error.message}]};
+      }
         throw error;
     }
   }
 
-  async deleteProduct(productsDTO: DeleteProductRequestDTO[]): Promise<Product[]> {
- try{
+  async deleteProduct(productsDTO: DeleteProductRequestDTO[]): Promise<{products: Product[], warnings?: any[]}> {
+    let result : Product[] = [];
+   try{
         const productsObjectArray: Product[] = productsDTO.map(requestDeleteDTOtoEntity);
-        const result: Product[] = await this.productRepository.deleteProduct(productsObjectArray);
-        return result;
+        result = await this.productRepository.deleteProduct(productsObjectArray);
+        const resultoToKafkaDTO : ProductKafkaDTO[] = result.map(productToKafkaDTO);
+        await this.eventBus.publish_with_default_meta(this.eventTopic, "product.deleted", resultoToKafkaDTO);
+        return {products: result};
     }
     catch (error) {
-        throw error;
+       if(error instanceof KafkaJSError){
+        let message = "KafkaJSError al publicar evento en topic '" + this.eventTopic + "'";
+        console.log(message);
+        console.log(error);
+        return {products: result, warnings: [{message, details: error.message}]};
+      }
+      throw error;
     }
 
   }

@@ -131,7 +131,7 @@ class ProductController {
         try {
             const requestBody = req.body;
             //Si el req.body no es un array, da error con un if
-            if (!Array.isArray(requestBody)) {
+            if (!Array.isArray(requestBody) || requestBody.length === 0) {
                 return next(httpError.BadRequestError('El body debe ser un array de productos'));
             }
             //Recorremos el array de productos y validamos que cada producto tenga los campos obligatorios (sku, title, category_code, description e is_published)
@@ -142,10 +142,10 @@ class ProductController {
                 }
             }
             const productsDTOArray: UpdateFullProductRequestDTO[] = requestBody.map(jsonToUpdateFullProductRequestDTO);
-            const products = await this.productService.updateFullProduct(productsDTOArray);
+            const {products, warnings} = await this.productService.updateFullProduct(productsDTOArray);
             const productResponse = products.map(productToResponseDTO);
-            
-            res.status(201).success({data:productResponse});
+
+            res.status(201).success({data:productResponse, warnings});
         } catch (error) {
             if(error instanceof ProductoNotFoundError){
                 return next(httpError.NotFoundError(error.message));
@@ -160,7 +160,7 @@ class ProductController {
         try {
             const requestBody = req.body;
             //Si el req.body no es un array, da error con un if
-            if (!Array.isArray(requestBody)) {
+            if (!Array.isArray(requestBody) || requestBody.length === 0) {
                 return next(httpError.BadRequestError('El body debe ser un array de productos'));
             }
             //Recorremos el array de productos y validamos que cada producto tenga los campos obligatorios (sku, title, category_code, description e is_published)
@@ -171,10 +171,10 @@ class ProductController {
                 }
             }
             const productsDTOArray: UpdatePartialProductRequestDTO[] = requestBody.map(jsonToUpdatePartialProductRequestDTO);
-            const products = await this.productService.updateProduct(productsDTOArray);
+            const {products, warnings} = await this.productService.updateProduct(productsDTOArray);
             const productResponse = products.map(productToResponseDTO);
 
-            res.status(200).success({data: productResponse});
+            res.status(200).success({data: productResponse, warnings});
         } catch (error) {
             if(error instanceof ProductoNotFoundError){
                 return next(httpError.NotFoundError(error.message));
@@ -188,7 +188,7 @@ class ProductController {
         try {
             const requestBody = req.body;
             //Si el req.body no es un array, da error con un if
-            if (!Array.isArray(requestBody)) {
+            if (!Array.isArray(requestBody) || requestBody.length === 0) {
                 return next(httpError.BadRequestError('El body debe ser un array de productos'));
             }
             //Recorremos el array de productos y validamos que cada producto tenga los campos obligatorios (sku, title, category_code, description e is_published)
@@ -199,9 +199,9 @@ class ProductController {
                 }
             }
             const productsDTOArray: DeleteProductRequestDTO[] = requestBody.map(jsonToDeleteProductRequestDTO);
-            const products = await this.productService.deleteProduct(productsDTOArray);
+            const {products, warnings} = await this.productService.deleteProduct(productsDTOArray);
             const productResponse = products.map(productToResponseDTO);
-            res.status(200).success({data: productResponse});
+            res.status(200).success({data: productResponse, warnings});
         } catch (error) {
             if(error instanceof ProductoNotFoundError){
                 return next(httpError.NotFoundError(error.message));

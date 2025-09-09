@@ -12,4 +12,5 @@ export interface EventBus {
     //El publish se encarga de enviar eventos a un topic específico
     //Events sera un array de DomainEvent, que representan los eventos a enviar
   publish(topic: string, events: DomainEvent[]): Promise<void>;
+  publish_with_default_meta(topic: string, event_name: string, payload: unknown): Promise<void>
 }

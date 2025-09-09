@@ -21,7 +21,7 @@ beforeEach(() => {
     jest.clearAllMocks();
     
     repo = makeProductRepoMock();
-    eventBus = {publish: jest.fn()}; //Eventbus requiere una funcion llamada publish, asi que la mockeamos
+    eventBus = {publish: jest.fn(), publish_with_default_meta: jest.fn()}; //Eventbus requiere una funcion llamada publish, asi que la mockeamos
     service = new ProductService(repo, eventBus);
     controller = new ProductController(service);
 });

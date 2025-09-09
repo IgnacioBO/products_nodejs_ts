@@ -21,7 +21,7 @@ src/
     ...
 
 Para levantar 
-docker compose -f compose.kafka.yml down -v
+docker compose -f compose.kafka.yml up -d
 
 Para bajar
 docker compose -f compose.kafka.yml down -v
@@ -40,3 +40,6 @@ docker compose -f compose.kafka.yml down -v
         });
     }
     await admin.disconnect();
+
+
+3)

@@ -35,6 +35,7 @@ function makeProductRepoMock (): jest.Mocked<ProductRepository>  {
 function makeEventBusMock (): jest.Mocked<EventBus>  {
     return {
         publish: jest.fn(),
+        publish_with_default_meta: jest.fn(),
     }
 }
 
@@ -351,6 +352,53 @@ describe ("updateFullProduct service", () => {
         .rejects.toThrow('Error al actualizar el producto');
     });
 
+    test('update full product with kafka error', async () => {
+    
+        const sku = '12345';
+        const updateData: UpdateFullProductRequestDTO[] = [{
+            sku: '12345',
+            parent_sku: '54321',
+            title: "test titulo",
+            category_code: "R1000",
+            description: "TEst Producto",
+            short_description: "TEst short",
+            is_published: true,
+        }];
+
+        repo.updateFullProduct.mockResolvedValueOnce([{
+            sku: '12345',
+            parentSku: '54321',
+            title: "Nuevo Titulo",
+            categoryCode: "R1000",
+            description: "TEst Producto",
+            shortDescription: "TEst short",
+            isPublished: true,
+        }]);
+
+        eventBus.publish_with_default_meta.mockRejectedValueOnce(new KafkaJSError('Error al publicar en Kafka'));
+
+        // Llamamos al servicio para crear el producto
+        const result: {products: Product[], warnings?: any[]} = await service.updateFullProduct(updateData);
+
+        expect(repo.updateFullProduct).toHaveBeenCalledTimes(1);
+
+        expect(repo.updateFullProduct).toHaveBeenCalledWith(updateData.map(requestDTOtoEntity));
+
+        expect(result.products).toEqual([{
+            sku: '12345',
+            parentSku: '54321',
+            title: "Nuevo Titulo",
+            categoryCode: "R1000",
+            description: "TEst Producto",
+            shortDescription: "TEst short",
+            isPublished: true,
+        }]);
+
+        expect(eventBus.publish_with_default_meta).toHaveBeenCalledTimes(1);
+        expect(result.warnings).toBeDefined();
+        expect(result.warnings![0]).toEqual({details:"Error al publicar en Kafka", message: "KafkaJSError al publicar evento en topic '" + topic + "'"});
+    });
+
     test ('updateFullProduct', async () => {
 
         const sku = '12345';
@@ -374,13 +422,13 @@ describe ("updateFullProduct service", () => {
             isPublished: true,
         }]);
 
-        const result: Product[] = await service.updateFullProduct(updateData);
+        const result: {products: Product[], warnings?: any[]} = await service.updateFullProduct(updateData);
 
         expect(repo.updateFullProduct).toHaveBeenCalledTimes(1);
         expect(repo.updateFullProduct).toHaveBeenCalledWith(updateData.map(requestDTOtoEntity));
 
         // Verificamos que el resultado es el esperado
-        expect(result).toEqual([{
+        expect(result.products).toEqual([{
             sku: '12345',
             parentSku: '54321',
             title: "Nuevo Titulo",
@@ -406,6 +454,53 @@ describe("updateProduct service", () => {
         .rejects.toThrow('Error al actualizar parcialmente el producto');
     });
 
+    test('updateProduct with kafka error', async () => {
+
+        const sku = '12345';
+        const updateData: UpdatePartialProductRequestDTO[] = [{
+            sku: '12345',
+            parent_sku: '54321',
+            title: "test titulo",
+            category_code: "R1000",
+            description: "TEst Producto",
+            short_description: "TEst short",
+            is_published: true,
+        }];
+
+        repo.updateProduct.mockResolvedValueOnce([{
+            sku: '12345',
+            parentSku: '54321',
+            title: "Nuevo Titulo",
+            categoryCode: "R1000",
+            description: "TEst Producto",
+            shortDescription: "TEst short",
+            isPublished: true,
+        }]);
+
+        eventBus.publish_with_default_meta.mockRejectedValueOnce(new KafkaJSError('Error al publicar en Kafka'));
+
+        // Llamamos al servicio para crear el producto
+        const result: {products: Product[], warnings?: any[]} = await service.updateProduct(updateData);
+
+        expect(repo.updateProduct).toHaveBeenCalledTimes(1);
+
+        expect(repo.updateProduct).toHaveBeenCalledWith(updateData.map(requestDTOtoEntity));
+
+        expect(result.products).toEqual([{
+            sku: '12345',
+            parentSku: '54321',
+            title: "Nuevo Titulo",
+            categoryCode: "R1000",
+            description: "TEst Producto",
+            shortDescription: "TEst short",
+            isPublished: true,
+        }]);
+
+        expect(eventBus.publish_with_default_meta).toHaveBeenCalledTimes(1);
+        expect(result.warnings).toBeDefined();
+        expect(result.warnings![0]).toEqual({details:"Error al publicar en Kafka", message: "KafkaJSError al publicar evento en topic '" + topic + "'"});
+    });
+
     test('updateProduct', async () => {
         const updateData: UpdateFullProductRequestDTO[] = [{
             sku: '12345',
@@ -427,7 +522,7 @@ describe("updateProduct service", () => {
             isPublished: true,
         }]);
 
-        const result: Product[] = await service.updateProduct(updateData);
+        const {products: result} = await service.updateProduct(updateData);
 
         expect(repo.updateProduct).toHaveBeenCalledTimes(1);
         expect(repo.updateProduct).toHaveBeenCalledWith(updateData.map(requestDTOtoEntity));
@@ -460,6 +555,33 @@ describe("deleteProduct service", () => {
         .rejects.toThrow('Error al eliminar el producto');
     });
 
+
+    test('deleteProduct with kafka error', async () => {
+        const deleteData: DeleteProductRequestDTO[] = [{
+            sku: '12345',
+        }];
+
+        repo.deleteProduct.mockResolvedValueOnce([{
+            sku: '12345',
+        }]);
+
+        //Ahora mockeamos un error con throw
+        eventBus.publish_with_default_meta.mockRejectedValueOnce(new KafkaJSError('Error al publicar en Kafka'));
+
+        // Llamamos al servicio para crear el producto
+        const result: {products: Product[], warnings?: any[]} = await service.deleteProduct(deleteData);
+
+        expect(repo.deleteProduct).toHaveBeenCalledTimes(1);
+        expect(repo.deleteProduct).toHaveBeenCalledWith(deleteData);
+
+        // Verificamos que el resultado es el esperado
+        expect(result.products).toEqual([{
+            sku: '12345',
+        }]);
+        expect(result.warnings).toBeDefined();
+        expect(result.warnings![0]).toEqual({details:"Error al publicar en Kafka", message: "KafkaJSError al publicar evento en topic '" + topic + "'"});
+    });
+
     test("deleteProduct", async () => {
         const skuSent = '12345';
         const deleteData: DeleteProductRequestDTO[] = [{
@@ -470,13 +592,13 @@ describe("deleteProduct service", () => {
             sku: skuSent,
         }]);
 
-        const result: Product[] = await service.deleteProduct(deleteData);
+        const result: {products: Product[]} = await service.deleteProduct(deleteData);
 
         expect(repo.deleteProduct).toHaveBeenCalledTimes(1);
         expect(repo.deleteProduct).toHaveBeenCalledWith(deleteData);
 
         // Verificamos que el resultado es el esperado
-        expect(result).toEqual([{
+        expect(result.products).toEqual([{
             sku: skuSent,
         }]);
     });
