@@ -9,7 +9,12 @@ services:
       # Listeners para host y red docker
       KAFKA_LISTENERS: CONTROLLER://broker:9091,HOST://0.0.0.0:9092,DOCKER://0.0.0.0:9093
       KAFKA_ADVERTISED_LISTENERS: HOST://localhost:9092,DOCKER://broker:9093
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,DOCKER:PLAINTEXT,HOST:PLAINTEXT
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,DOCKER:PLAINTEXT,HOST:SASL_PLAINTEXT # Definimos el protocolo de seguridad para cada listener
+      #CONTROLLER es para la comunicacion interna de KRaft
+      #DOCKER es para comunicacion entre contenedores docker (por ejemplo kafka-ui)
+      #HOST es para comunicacion desde el host (mi pc) al broker kafka, por ejemplo para que mi app node se conecte a kafka o usar offset-explrer para ver topics
+      #PARA HOST USAREMOS SASL_PLAINTEXT para que la comunicacion sea segura (con usuario y pass) y para los otros dos usaremos PLAINTEXT (sin seguridad)
+      #NO USAREMOS SASL_SSL porque necesitamos certificados y es mas complejo, para desarrollo local no es necesario
 
       # KRaft (sin ZooKeeper), single-node
       KAFKA_PROCESS_ROLES: broker,controller
@@ -21,8 +26,14 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_SASL_ENABLED_MECHANISMS: PLAIN
+      KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
+      KAFKA_OPTS: "-Djava.security.auth.login.config=/etc/kafka/secrets/kafka_server_jaas.conf" #  ruta del archivo jaas dentro del contenedor para configuracion de autenticacion
       CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk  # cualquier ID base64-like para dev
     restart: unless-stopped
+    volumes: #[ruta en el host]:[ruta dentro del contenedor]
+     - ./.dockers/kafka/kafka_server_jaas.conf:/etc/kafka/secrets/kafka_server_jaas.conf #montamos el archivo jaas para la configuracion de autenticacion
 
   # UI opcional para mirar topics, consumir y producir mensajes desde el navegador
   kafka-ui:
