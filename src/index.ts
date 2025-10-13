@@ -35,7 +35,7 @@ const productService = new ProductService(productRepository, eventBus);
 const productController = new ProductController(productService);
 
 const offerRepository = new OfferRepository();
-const offerService = new OfferService(productService, offerRepository);
+const offerService = new OfferService(productService, offerRepository, eventBus);
 const offerController = new OfferController(offerService);
 
 

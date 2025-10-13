@@ -8,18 +8,26 @@ import {ProductoNotFoundError} from '../../products/domain/product-errors';
 import type OfferFiltersDTO from './offer-filters-dto';
 import {offerRequestDTOtoEntity, offerRequestDeleteDTOtoEntity} from './offer-request-mapper';
 import type { CreateOfferRequestDTO, DeleteOfferRequestDTO, UpdateFullOfferRequestDTO, UpdatePartialOfferRequestDTO } from './offer-request-dto';
-
+import { EventBus } from "../../shared/application/event-bus-kafka";
+import { offerToKafkaDTO } from './offer-kafka-mapper';
+import { KafkaJSError } from 'kafkajs';
+import { OfferKafkaDTO } from './offer-kafka-dto';
 
 class OfferService {
 
     productService: ProductService;
     offerRepository: OfferRepository;
-    constructor(productService: ProductService, offerRepository: OfferRepository) {
+    eventBus : EventBus;
+    eventTopic: string;
+    constructor(productService: ProductService, offerRepository: OfferRepository, eventBus: EventBus) {
         this.productService = productService;
         this.offerRepository = offerRepository;
+        this.eventBus = eventBus;
+        this.eventTopic = String(process.env.KAFKA_OFFER_TOPIC);
     }
 
-  async createOffer(offers: CreateOfferRequestDTO[]): Promise<Offer[]> {
+  async createOffer(offers: CreateOfferRequestDTO[]): Promise<{offers: Offer[], warnings?: any[]}> {
+    let result: Offer[] = [];
     try{
         let skusNotFound: string[] = [];
 
@@ -41,36 +49,61 @@ class OfferService {
         }
 
         const offersObjectArray: Offer[] = offers.map(offerRequestDTOtoEntity);
-        const result: Offer[] = await this.offerRepository.createOffer(offersObjectArray);
-        return result;
+        result = await this.offerRepository.createOffer(offersObjectArray);
+        const resultoToKafkaDTO: OfferKafkaDTO[] = result.map(offerToKafkaDTO);
+        await this.eventBus.publish_with_default_meta(this.eventTopic, "offer.created", resultoToKafkaDTO);
+        return {offers: result};
     }
     catch (error) {
-        throw error;
-    }
+          if(error instanceof KafkaJSError){
+            let message = "KafkaJSError al publicar evento en topic '" + this.eventTopic + "'";
+            console.log(message);
+            console.log(error);
+            return {offers: result, warnings: [{message, details: error.message}]};
+          }
+            throw error;
+        }
 
   }
 
-    async updateFullOffer(offers: UpdateFullOfferRequestDTO[]): Promise<Offer[]> {
+    async updateFullOffer(offers: UpdateFullOfferRequestDTO[]): Promise<{offers: Offer[], warnings?: any[]} > {
+        let result: Offer[] = [];
         try{
             const offersObjectArray = offers.map(offerRequestDTOtoEntity);
-            const result = await this.offerRepository.updateFullOffer(offersObjectArray);
-            return result;
+            result = await this.offerRepository.updateFullOffer(offersObjectArray);
+            const resultoToKafkaDTO: OfferKafkaDTO[] = result.map(offerToKafkaDTO);
+            await this.eventBus.publish_with_default_meta(this.eventTopic, "offer.updated", resultoToKafkaDTO);
+            return {offers: result};
         }
         catch (error) {
+          if(error instanceof KafkaJSError){
+            let message = "KafkaJSError al publicar evento en topic '" + this.eventTopic + "'";
+            console.log(message);
+            console.log(error);
+            return {offers: result, warnings: [{message, details: error.message}]};
+          }
             throw error;
         }
     }
 
-    async updateOffer(offers: UpdatePartialOfferRequestDTO[]): Promise<Offer[]> {
+    async updateOffer(offers: UpdatePartialOfferRequestDTO[]): Promise<{offers: Offer[], warnings?: any[]}> {
+        let result: Offer[] = [];
         try{
             const offersObjectArray = offers.map(offerRequestDTOtoEntity);
-            const result = await this.offerRepository.updateOffer(offersObjectArray);
-            return result;
+            result = await this.offerRepository.updateOffer(offersObjectArray);
+            const resultoToKafkaDTO: OfferKafkaDTO[] = result.map(offerToKafkaDTO);
+            await this.eventBus.publish_with_default_meta(this.eventTopic, "offer.updated", resultoToKafkaDTO);
+            return {offers: result};
         }
         catch (error) {
+          if(error instanceof KafkaJSError){
+            let message = "KafkaJSError al publicar evento en topic '" + this.eventTopic + "'";
+            console.log(message);
+            console.log(error);
+            return {offers: result, warnings: [{message, details: error.message}]};
+          }
             throw error;
         }
-
     }
 
     async deleteOffer(offers: DeleteOfferRequestDTO[]): Promise<string> {

@@ -29,6 +29,8 @@ services:
       KAFKA_NUM_PARTITIONS: 3
       KAFKA_SASL_ENABLED_MECHANISMS: PLAIN
       KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
+      #KAFKA_LOG_RETENTION_MS: 10000 #Cantidad de ms que se guardan los logs (mensajes) en kafka, luego se borran automaticamente
+      KAFKA_LOG_RETENTION_HOURS: 168 #Cantidad de horas que se guardan los logs (mensajes) en kafka, luego se borran automaticamente (168h = 7 dias), tambien puede configurarse por topicos individualmente
       KAFKA_OPTS: "-Djava.security.auth.login.config=/etc/kafka/secrets/kafka_server_jaas.conf" #  ruta del archivo jaas dentro del contenedor para configuracion de autenticacion
       CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk  # cualquier ID base64-like para dev
     restart: unless-stopped

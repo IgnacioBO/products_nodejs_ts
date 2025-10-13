@@ -59,9 +59,9 @@ class OfferController {
                 }
             }
             const requestDTO: CreateOfferRequestDTO[] = requestBody.map(jsonToCreateOfferRequestDTO)
-            const result: Offer[] = await this.offerService.createOffer(requestDTO);
-            const offerRespone: OfferResponseDTO[] = result.map(offerToResponseDTO);
-            res.status(201).success({data: offerRespone});
+            const {offers, warnings} = await this.offerService.createOffer(requestDTO)
+            const offerRespone: OfferResponseDTO[] = offers.map(offerToResponseDTO);
+            res.status(201).success({data: offerRespone, warnings});
         } catch (error) {
             if(error instanceof ProductoNotFoundError){
                 return next(httpError.NotFoundError(error.message));
@@ -89,10 +89,10 @@ class OfferController {
                 }
             }
             const requestDTO: UpdateFullOfferRequestDTO[] = requestBody.map(jsonToUpdateFullOfferRequestDTO);
-            const result = await this.offerService.updateFullOffer(requestDTO);
-            const offerResponse = result.map(offerToResponseDTO);
+            const {offers, warnings} = await this.offerService.updateFullOffer(requestDTO);
+            const offerResponse = offers.map(offerToResponseDTO);
 
-            res.status(201).success({data:offerResponse});
+            res.status(201).success({data:offerResponse, warnings});
         } catch (error) {
             if (error instanceof OfferAlreadyExists) {
                 return next(httpError.BadRequestError(error.message));
@@ -119,10 +119,10 @@ class OfferController {
                 }
             }
             const requestDTO: UpdatePartialOfferRequestDTO[] = requestBody.map(jsonToUpdatePartialOfferRequestDTO)
-            const result = await this.offerService.updateOffer(requestDTO);
-            const offerResponse = result.map(offerToResponseDTO);
+           const {offers, warnings} = await this.offerService.updateOffer(requestDTO);
+            const offerResponse = offers.map(offerToResponseDTO);
 
-            res.status(201).success({data:offerResponse});
+            res.status(201).success({data:offerResponse, warnings});
         } catch (error) {
             if (error instanceof OfferAlreadyExists) {
                 return next(httpError.BadRequestError(error.message));
