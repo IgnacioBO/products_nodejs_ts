@@ -7,14 +7,16 @@ services:
       - "9092:9092"        # host -> broker (HOST listener)
     environment:
       # Listeners para host y red docker
-      KAFKA_LISTENERS: CONTROLLER://broker:9091,HOST://0.0.0.0:9092,DOCKER://0.0.0.0:9093
-      KAFKA_ADVERTISED_LISTENERS: HOST://localhost:9092,DOCKER://broker:9093
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,DOCKER:PLAINTEXT,HOST:SASL_PLAINTEXT # Definimos el protocolo de seguridad para cada listener
+      KAFKA_LISTENERS: CONTROLLER://broker:9091,HOST://0.0.0.0:9092,DOCKER://0.0.0.0:9093,UI://0.0.0.0:9094
+      KAFKA_ADVERTISED_LISTENERS: HOST://localhost:9092,DOCKER://broker:9093,UI://broker:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,DOCKER:SASL_PLAINTEXT,HOST:SASL_PLAINTEXT,UI:PLAINTEXT # Definimos el protocolo de seguridad para cada listener
       #CONTROLLER es para la comunicacion interna de KRaft
-      #DOCKER es para comunicacion entre contenedores docker (por ejemplo kafka-ui)
+      #DOCKER es para comunicacion entre contenedores docker (por ejemplo kafka-ui, o para conectarse desde otra app dockerizada)
+      #UI se creó depsues con PLAINTEXT para que kafka-ui pueda conectarse sin autenticacion
       #HOST es para comunicacion desde el host (mi pc) al broker kafka, por ejemplo para que mi app node se conecte a kafka o usar offset-explrer para ver topics
-      #PARA HOST USAREMOS SASL_PLAINTEXT para que la comunicacion sea segura (con usuario y pass) y para los otros dos usaremos PLAINTEXT (sin seguridad)
+      #PARA HOST y DOCKER USAREMOS SASL_PLAINTEXT para que la comunicacion sea segura (con usuario y pass) y para los otros dos usaremos PLAINTEXT (sin seguridad)
       #NO USAREMOS SASL_SSL porque necesitamos certificados y es mas complejo, para desarrollo local no es necesario
+      #PUEDO CREAR mas KAFKA_LISTENERS si quiero mas tipos de conexiones (por ejemplo para diferentes apps con diferentes usuarios y pass)
 
       # KRaft (sin ZooKeeper), single-node
       KAFKA_PROCESS_ROLES: broker,controller
@@ -36,6 +38,8 @@ services:
     restart: unless-stopped
     volumes: #[ruta en el host]:[ruta dentro del contenedor]
      - ./.dockers/kafka/kafka_server_jaas.conf:/etc/kafka/secrets/kafka_server_jaas.conf #montamos el archivo jaas para la configuracion de autenticacion
+    networks:
+      - products_ts_net
 
   # UI opcional para mirar topics, consumir y producir mensajes desde el navegador
   kafka-ui:
@@ -46,6 +50,13 @@ services:
     environment:
       DYNAMIC_CONFIG_ENABLED: "true"
       KAFKA_CLUSTERS_0_NAME: local
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: broker:9093
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: broker:9094
     depends_on:
       - kafka
+    networks:
+      - products_ts_net
+
+networks:
+  products_ts_net:
+    name: products_ts_net
+    driver: bridge

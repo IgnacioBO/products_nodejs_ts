@@ -1,0 +1,10 @@
+# No enviar al contexto lo que no se usa
+node_modules
+tests
+*.spec.ts
+.git
+.dockerignore
+#.env
+
+# No enviar el resultado de build, porque lo generamos dentro del contenedor
+dist
