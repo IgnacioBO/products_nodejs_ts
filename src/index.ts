@@ -42,7 +42,7 @@ const offerController = new OfferController(offerService);
 async function main(): Promise<void>{
     //Nos conectamos a MongoDB al iniciar la aplicacion
     await connectMongo();
-    app.set('port', Number(process.env.EP_PORT) || 3000);
+    app.set('port', Number(process.env.PORT) || 3000);
 
     //Parsea los json y el body de las peticiones
     app.use(express.json());
