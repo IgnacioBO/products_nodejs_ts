@@ -31,7 +31,13 @@ const clientOptions: MongoClientOptions = {
         maxPoolSize: 100 // Lo máximo de conexiones que se pueden abrir al mismo tiempo (default 100)
 };
 
-const client: MongoClient = new MongoClient (mongoURI, clientOptions);
+let client: MongoClient = null as unknown as MongoClient;
+try{
+  client = new MongoClient (mongoURI, clientOptions);
+} catch (error) {
+    console.error("Error al crear el cliente de MongoDB: ", error);
+    //throw error; // Re-throw the error to handle it in the calling function
+}
 
 async function connectMongo(): Promise<MongoClient> {
   try {
