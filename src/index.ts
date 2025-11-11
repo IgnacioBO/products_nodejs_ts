@@ -41,7 +41,13 @@ const offerController = new OfferController(offerService);
 
 async function main(): Promise<void>{
     //Nos conectamos a MongoDB al iniciar la aplicacion
-    await connectMongo();
+    try{
+        await connectMongo();
+    }
+    catch(error){
+        console.error("Error al conectar a MongoDB: ", error);
+        //process.exit(1); // Salir con error
+    }
     app.set('port', Number(process.env.PORT) || 3000);
 
     //Parsea los json y el body de las peticiones
