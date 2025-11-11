@@ -29,3 +29,4 @@ CMD ["node", "dist/index.js"]
 ## Luego correr el contenedor y pasar el .env si es necesario
 # docker run --network=products_ts_net --env-file .env-docker -p 3000:3000 test-api
 # Nota: --network=products_ts_net es para que el contenedor pueda ver a los demas contenedores del docker-compose
+#
