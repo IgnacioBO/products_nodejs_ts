@@ -17,8 +17,19 @@ const {DB_OFFER_USER = "", DB_OFFER_PASS = "", DB_OFFER_HOST, DB_OFFER_PORT, DB_
 
 //encodeURIComponent se usa para codificar caracteres especiales en la URI, como @, :, /, que podria tener una contraseña y no tener errores.
 //authSource=admin significa que el usuario a autenticar se encuentra en la base de datos admin (en system.users)
-const mongoURI: string = `mongodb://${encodeURIComponent(DB_OFFER_USER)}:${encodeURIComponent(DB_OFFER_PASS)}` + 
+
+function buildMongoUri(env = process.env) {
+  if (env.DB_OFFER_MONGODB_URI) return env.DB_OFFER_MONGODB_URI; // Atlas / cualquier URI completa
+
+  console.log("Mongo URI no definida, se construye desde otros envs.");
+
+  // Para Mongo local: authSource=admin si tu user es admin de la instancia
+  return `mongodb://${encodeURIComponent(DB_OFFER_USER)}:${encodeURIComponent(DB_OFFER_PASS)}` + 
     `@${DB_OFFER_HOST}:${DB_OFFER_PORT}/${DB_OFFER_NAME}?authSource=admin`;
+}
+
+
+const mongoURI: string = buildMongoUri();
 
 console.log(`MongoDB URI: ${mongoURI}`); //Para ver la URI que se esta usando
 
