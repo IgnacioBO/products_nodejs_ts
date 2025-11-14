@@ -18,6 +18,13 @@ const pool = new Pool({
   connectionString: `postgres://${DB_PRODUCT_USER}:${DB_PRODUCT_PASS}@${DB_PRODUCT_HOST}:${DB_PRODUCT_PORT}/${DB_PRODUCT_NAME}`,
 });
 
+export async function verifyPostgresConnection(timeoutMs = 8000) {
+  console.log("Connection string:", `postgres://${DB_PRODUCT_USER}:${DB_PRODUCT_PASS}@${DB_PRODUCT_HOST}:${DB_PRODUCT_PORT}/${DB_PRODUCT_NAME}`);
+  const q = pool.query('select now() as now');
+  const t = new Promise((_, rej) => setTimeout(() => rej(new Error('pg connect timeout')), timeoutMs));
+  console.log("✅ Conexión a PostgreSQL establecida");
+  return Promise.race([q, t]);
+}
 
 //Default export significa que ese módulo tiene una sola “cosa principal” para importar.
 //import pool from './database-postgres';

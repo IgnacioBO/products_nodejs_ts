@@ -22,6 +22,7 @@ import OfferRepository from './offer/infrastructure/offer-mongodb-repository';
 import OfferService from './offer/application/offer-service';
 import OfferController from './offer/infrastructure/offer-controller';
 import offerRoutesFactory from './offer/infrastructure/offer-routes';
+import { verifyPostgresConnection } from './shared/infrastructure/config/database';
 
 //EventBus para pubicar en kafka
 const eventBus: KafkaEventBus = new KafkaEventBus();
@@ -46,6 +47,14 @@ async function main(): Promise<void>{
     }
     catch(error){
         console.error("Error al conectar a MongoDB: ", error);
+        //process.exit(1); // Salir con error
+    }
+
+    try{
+        await verifyPostgresConnection();
+    }
+    catch(error){
+        console.error("Error al conectar a PostgreSQL: ", error);
         //process.exit(1); // Salir con error
     }
     app.set('port', Number(process.env.PORT) || 3000);
