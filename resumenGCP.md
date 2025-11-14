@@ -130,8 +130,8 @@ Ejecuta:
 
 mongosh "mongodb+srv://root:example@TU-CLUSTER.xxxx.mongodb.net/nodeJSProject?retryWrites=true&w=majority" --file initMongo.js
 
-
 Tu script ya hace db = db.getSiblingDB('nodeJSProject'), crea índices, inserta, etc.
+Ojo eso si, atlas no soporta funciones como db.system.js y createUser, sacalros en .js
 
 Opción 2 — Con Atlas (UI)
 

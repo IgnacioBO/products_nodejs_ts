@@ -4,6 +4,7 @@ tests
 *.spec.ts
 .git
 .dockerignore
+mongosh.exe
 #.env
 
 # No enviar el resultado de build, porque lo generamos dentro del contenedor
