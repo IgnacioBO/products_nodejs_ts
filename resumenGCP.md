@@ -1,4 +1,12 @@
-Primero se creo el dockerFile
+TL;DR
+Primero cree el docker file, luego use Cloud Run desde GCP directo (por la UI de la web), lo conecte a mi github, cofigure puerto 3000.
+
+Luego use Cloud SQL para crear la bbdd posgtres, use cloud shell para inyectarle los datos de init.sql, conecte cloud run con cloud sql y agrgue variable de entorno de cloud run.
+
+Luego use MongoDB de Atlas, deje IP publica, use el conection string dado y lo agregue al cloud run en un variable de entorno que usa mi app para conectarse, finalmente use mongosh para inyectar mi initMongo.js
+
+
+0) Primero se creo el dockerFile
 Luego
 1) Desplegar desde la consola (sin instalar nada)
 
@@ -146,3 +154,37 @@ prices: [
   { currency: "CLP", type: "DISCOUNT",  value:  8000 },
   { currency: "CLP", type: "PROMOTION", value:  7000 },
 ]
+
+5) KAFKA
+Hay dos manera por GCP o por Confluence
+Por GCP opte usar SASL como metodo en vez de OATH
+5.1) GPC con SASL:
+1) Crear el clúster
+
+Console → Managed Service for Apache Kafka → Create cluster
+
+Región: misma de tu Cloud Run (p. ej. us-central1).
+
+Networking: conéctalo a tu VPC (default está ok).
+
+Al terminar, copia los Bootstrap servers (varios host:port). 
+Google Cloud Documentation
+
+2) Red de Cloud Run → Kafka (VPC)
+
+MSAK expone endpoints privados por VPC.
+
+Crea un Serverless VPC Access connector en la misma región/VPC:
+En mi caso use la subred 10.8.0.0 en US-CENTRAL que es donde esta mi api
+
+Edita tu servicio de Cloud Run → Networking → VPC Connector: selecciónalo.
+(Editar e impl nueva version -> Redes -> Connect to a VPC outbounf traffic -> Use Severs VPC access conecctor -> Seleccionar Conector -> 
+Traffic Routing -> Route only requests to private IPs to the VPC )
+
+
+3) Crar un Service account con rol roles/managedkafka.client. (O Cliente de Kafka Administrado).
+Luego ir al usuario y a "claves" poneger agegar clave y generar uns clave JSON. Esa se copia y seria la pass.
+KAFKA_BROKERS=ELQUEGENERAKAFKAENGGCP
+KAFKA_USER=kafka-01@................
+KAFKA_PASS=0e85.......... (JSON)
+KAFKA_SSL=true
