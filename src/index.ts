@@ -82,7 +82,7 @@ async function main(): Promise<void>{
         if(topicsNotCreated.length > 0){
             await admin.createTopics({
                 waitForLeaders: true,
-                topics: topicsNotCreated.map(t => ({ topic: t, numPartitions: 3, replicationFactor: 1 }))
+                topics: topicsNotCreated.map(t => ({ topic: t, numPartitions: 3/*, replicationFactor: 1*/ }))
             });
         }
         await admin.disconnect();

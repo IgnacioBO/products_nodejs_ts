@@ -158,8 +158,8 @@ prices: [
 5) KAFKA
 Hay dos manera por GCP o por Confluence
 Por GCP opte usar SASL como metodo en vez de OATH
-5.1) GPC con SASL:
-1) Crear el clúster
+5.1) GPC con SASL -> LO MALO -> para ver mensajes con app como offset explroer -> debo conetarem con VPN a la VPC de google o una VM dentro de GCP, etc.
+5.1.1) Crear el clúster
 
 Console → Managed Service for Apache Kafka → Create cluster
 
@@ -170,7 +170,7 @@ Networking: conéctalo a tu VPC (default está ok).
 Al terminar, copia los Bootstrap servers (varios host:port). 
 Google Cloud Documentation
 
-2) Red de Cloud Run → Kafka (VPC)
+5.1.2) Red de Cloud Run → Kafka (VPC)
 
 MSAK expone endpoints privados por VPC.
 
@@ -182,9 +182,39 @@ Edita tu servicio de Cloud Run → Networking → VPC Connector: selecciónalo.
 Traffic Routing -> Route only requests to private IPs to the VPC )
 
 
-3) Crar un Service account con rol roles/managedkafka.client. (O Cliente de Kafka Administrado).
-Luego ir al usuario y a "claves" poneger agegar clave y generar uns clave JSON. Esa se copia y seria la pass.
+5.1.3) Crar un Service account con rol roles/managedkafka.client. (O Cliente de Kafka Administrado).
+Luego ir al usuario y a "claves" poneger agegar clave y generar uns clave JSON. 
+5.1.4) LUEGO SE DESCARGA UN .JSON y debe convertirse a base64,
+Suponiuendo que el archivo se llama key.json
+LINUX:
+base64 -w0 key.json > key.b64
+
+W Powershell
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("key.json")) | Out-File -NoNewline key.b64
+
+Lyeg
+
 KAFKA_BROKERS=ELQUEGENERAKAFKAENGGCP
 KAFKA_USER=kafka-01@................
-KAFKA_PASS=0e85.......... (JSON)
+KAFKA_PASS=0e85.......... (JSON e base 64)
 KAFKA_SSL=true
+
+LISTO
+
+
+5.2) KAfka usando CONLUENCE -> Ventaje peude conectermee directo
+Crea cuenta y un Basic cluster en la región cercana a tu Cloud Run.
+
+En “API Keys”, crea API Key & Secret (guárdalos).
+
+Luego ponder en env
+KAFKA_BROKERS=Bootstrap server
+KAFKA_CLIENT_ID=catalog-service
+KAFKA_USER=API key
+KAFKA_PASS=API secret
+KAFKA_PRODUCT_TOPIC=products
+KAFKA_OFFER_TOPIC=offers
+KAFKA_SSL=true
+
+COMO posible error, puede dar error de policy 44 esto porque por defecto al crear los topicos eta puesto replicationFactor en 1.
+Entnces puede ponderse esto como una .env o sacar esa ocion para que se ponga la por defecto
