@@ -218,3 +218,5 @@ KAFKA_SSL=true
 
 COMO posible error, puede dar error de policy 44 esto porque por defecto al crear los topicos eta puesto replicationFactor en 1.
 Entnces puede ponderse esto como una .env o sacar esa ocion para que se ponga la por defecto
+
+Al crear topicos el replicationFactor debe estar en 3 para confliente por si a caso

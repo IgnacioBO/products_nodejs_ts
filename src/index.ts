@@ -77,12 +77,13 @@ async function main(): Promise<void>{
         const admin = kafkaClient.admin();
         await admin.connect();
         let topics = [String(process.env.KAFKA_PRODUCT_TOPIC), String(process.env.KAFKA_OFFER_TOPIC)];
+        let replFactor : number = process.env.KAFKA_REPLICATION_FACTOR ? parseInt(process.env.KAFKA_REPLICATION_FACTOR) : 1;
         let topicsCreated : string[] = await admin.listTopics();
         let topicsNotCreated = topics.filter(t => !topicsCreated.includes(t));
         if(topicsNotCreated.length > 0){
             await admin.createTopics({
                 waitForLeaders: true,
-                topics: topicsNotCreated.map(t => ({ topic: t, numPartitions: 3/*, replicationFactor: 1*/ }))
+                topics: topicsNotCreated.map(t => ({ topic: t, numPartitions: 3, replicationFactor: replFactor }))
             });
         }
         await admin.disconnect();
